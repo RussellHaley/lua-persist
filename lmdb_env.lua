@@ -22,10 +22,10 @@ local serpent = require("serpent")
 --Set up lmdb and a table of constants
 local lightningmdb = _VERSION >= "Lua 5.2" and lightningmdb_lib or lightningmdb
 local MDB = setmetatable({}, {
-    __index = function(_, k)
-      return lightningmdb["MDB_" .. k]
-    end
-  })
+  __index = function(_, k)
+    return lightningmdb["MDB_" .. k]
+  end
+})
 
 
 
@@ -33,14 +33,14 @@ local MDB = setmetatable({}, {
 -- open lmdb data set
 local function cursor_pairs(cursor_, key_, op_)
   return coroutine.wrap(function()
-      local k = key_
-      repeat
-        local k, v = cursor_:get(k, op_ or MDB.NEXT)
-        if k then
-          coroutine.yield(k, v)
-        end
-      until not k
-    end)
+    local k = key_
+    repeat
+      local k, v = cursor_:get(k, op_ or MDB.NEXT)
+      if k then
+        coroutine.yield(k, v)
+      end
+    until not k
+  end)
 end
 
 --- Opens an lmdb transaction.
@@ -49,7 +49,7 @@ end
 -- actually exists? We don't need MDB.create
 local function open_tx(name,readonly)
   local t,dh
-  local opts 
+  local opts
 
   if readonly then opts = MDB.RDONLY else opts = 0 end
   t = assert(lmdb_env:txn_begin(nil, opts))
@@ -60,12 +60,12 @@ end
 
 --- Checks the entry for valid values and serialises tables.
 local function clean_items(key,value,throw_on_key)
-  if type(key) == 'table' then 
+  if type(key) == 'table' then
     if throw_on_key then error('Key cannot be of type table.') end
     key = serpent.block(key)
   end
-  if type(value) == 'table' then 
-    value = serpent.block(value) 
+  if type(value) == 'table' then
+    value = serpent.block(value)
   elseif type(value) == 'boolean' then
     if value then value = 1 else value = 0 end
   end
@@ -87,6 +87,22 @@ local function db_print_entries(self)
   t:abort()
 end
 
+--- This funciton is a raw get of all entries in the database
+-- It could use parameters for fetch size and offset? I don't
+-- know how that would be implemented yet
+local function db_get_keys(self)
+  local retval = {}
+  local t,d = open_tx(self.name, true)
+  local cursor, error, errorno = t:cursor_open(d)
+  local k = 0
+
+  for k in cursor_pairs(cursor) do
+    retval[k] = true
+  end
+  cursor:close()
+  t:abort()
+  return tracker(self, retval)
+end
 
 --- This funciton is a raw get of all entries in the database
 -- It could use parameters for fetch size and offset? I don't
@@ -99,7 +115,7 @@ local function db_get_entries(self)
 
   for k, v in cursor_pairs(cursor) do
     local ok, ret = true, true
-    if type(v) == 'table' then 
+    if type(v) == 'table' then
       ok, ret = serpent.load(v)
     else
       k = tonumber(k) or k
@@ -116,17 +132,17 @@ end
 -- if a change tracker was used, only the changes
 -- (updates/new, delete) are applied to the database.
 -- otherwise we just puts everything in there (not implemented yet). 
-local db_commit = function(self,tbl) 
+local db_commit = function(self,tbl)
   local has_tracker = false
   local tx,db = open_tx(self.name)
   local ok, err, errno
   local cursor
   cursor, err, errno= tx:cursor_open(db)
-  if not cursor then 
+  if not cursor then
     tx:abort()
     return nil, err, errno
   end
-  
+
   local meta = getmetatable(tbl)
   if meta and meta.changes then
     has_tracker = true
@@ -140,23 +156,23 @@ local db_commit = function(self,tbl)
         ok, err, errno = cursor:del(k,v,0)
       end
       count = count + 1
-      if not ok then 
+      if not ok then
         cursor:close()
         tx:abort()
         return nil, err, errno
-      end      
+      end
     end
-    
+
   else
     --non-tracked. update all???
   end
-  
+
   cursor:close()
   tx:commit()
   if debug then
     print("Has tracker: "..tostring(has_tracker))
     print("Changes Committed: ".. count)
-    end
+  end
 end
 
 --- Runs a function over each value from the database and
@@ -168,7 +184,7 @@ local function db_search_entries(self,func,...)
   local retval= {}
   for k, v in cursor_pairs(cursor) do
     local ok,val = func(k,v,...)
-    if ok then 
+    if ok then
       retval[ok] = val
     end
   end
@@ -180,7 +196,7 @@ end
 --- Gets a single item from the database
 local function db_get_item(self,key)
   local t,d = open_tx(self.name, true)
-  local ok,res,errno = t:get(d,key, _, 0)  
+  local ok,res,errno = t:get(d,key, _, 0)
   t:commit()
   return ok,res,errno
 end
@@ -190,8 +206,8 @@ local function db_get_items(self,tbl)
   local tx,db = open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(db)
   local k = 0
-  for i,v in tbl do    
-    local key,val = cursor:get(i, MDB.FIRST)    
+  for i,v in tbl do
+    local key,val = cursor:get(i, MDB.FIRST)
     while key do
       retval[key] = val
       local key,val = cursor:get(i, MDB.NEXT)
@@ -206,7 +222,7 @@ local function db_add_table_item(self,table)
   local ok, err, errno
   local cursor
   cursor, err, errno= tx:cursor_open(db)
-  if not cursor then 
+  if not cursor then
     tx:abort()
     return nil, err, errno
   end
@@ -214,7 +230,7 @@ local function db_add_table_item(self,table)
   for k,v in pairs(table) do
     k,v = clean_items(k,v,true)
     ok, err, errno = cursor:put(k,v,0)
-    if not ok then 
+    if not ok then
       cursor:close()
       tx:abort()
       return err, errno
@@ -270,14 +286,14 @@ end
 --need to check if database exists yet!
 local function open_database(name,create)
   if lmdb_env then
-    if databases[name] then 
+    if databases[name] then
       return databases[name]
     end
 
     local t = lmdb_env:txn_begin(nil, 0)
     if name == "" then name = nil end
-    local opts 
-    if create then 
+    local opts
+    if create then
       opts = MDB.CREATE
     else
       opts = 0
@@ -298,7 +314,8 @@ local function open_database(name,create)
       get_item = db_get_item,
       get_items = db_get_items,
       commit = db_commit,
-      get_all = db_get_entries
+      get_all = db_get_entries,
+      get_all_keys = db_get_keys
     }
 
     if name ~= nil then databases[name] = db end
@@ -308,8 +325,19 @@ local function open_database(name,create)
   end
 end
 
+local function list_databases()
+  local ldb = open_database("")
+  local t = ldb:get_all_keys()
+  local count = 0
+  for i in pairs(t) do
+    count = count + 1
+    print(i)
+  end
+  return t, count
+end
+
 --- Returns the lmdb statistics as a table
-local function stats()    
+local function stats()
   return lmdb_env:stat()
 end
 
@@ -318,37 +346,58 @@ local function close_env()
   lmdb_env:close()
 end
 
+
+local function open(datadir)
+  local cd = lfs.currentdir()
+  assert(lfs.chdir(datadir))
+  lfs.chdir(cd)
+
+  lmdb_env = lightningmdb.env_create()
+  lmdb_env:set_mapsize(10485760)
+  lmdb_env:set_maxdbs(4)
+  lmdb_env:open(datadir, 0, 420)
+
+  return {
+    datadir = datadir,
+    databases = databases,
+    open_database = open_database,
+    open_tx = open_tx,
+    close_env = close_env,
+    list_dbs = list_databases,
+    stats = stats
+  }
+end
+
 --- Returns a new lmdb environment. This is the base environment/file 
 -- for all databases in your project.
 -- @param datadir A base directory to find the lmdb files. 
 -- @remarks Needs to be implemeneted like this:
 -- local function new(datadir,create_dir) and assert if not create dir and the dir doesn't exist
 -- Need to add an open to complement new only assert if it doesn't exist.
-local function new(datadir)
-  lmdb_env = lightningmdb.env_create()
-  lmdb_env:set_mapsize(10485760)
-  lmdb_env:set_maxdbs(4)     
-  lmdb_env:open(datadir, 0, 420)
+local function new(datadir, warn)
+  local cd = lfs.currentdir()
+  local exists = lfs.chdir(datadir)
+  lfs.chdir(cd)
 
-  return {  
-    datadir = datadir,
-    databases = databases,
-    open_database = open_database,
-    open_tx = open_tx,
-    close_env = close_env,
-    stats = stats
-  }
+  if warn and exists then
+    error('Data directory alread exists and warn flag set to true. Directory:'..datadir)
+  end
+  if not exists then
+    assert(lfs.mkdir(datadir))
+  end
+
+  return open(datadir)
 end
 
 --- Adds the changes table and the database to the base table specified in t. 
 -- @param db Will assert if null. Should have check for actual database object. 
 -- @param t Base table for tracking. If t is null a blank table is used.
 tracker = function (db,t)
-  
+
   assert(db,"Database is null");
-  
+
   if not t then t = {} end
-  
+
   local proxy ={} -- proxy for table t
 
   --create metatable for the proxy
@@ -359,7 +408,7 @@ tracker = function (db,t)
     __index = function (_,k,v)
       local meta = getmetatable(_)
       if k == "commit" then return end
-      print("*access to element" .. tostring(k))
+      --print("*access to element" .. tostring(k))
       return t[k]
     end,
     --table value assignment
@@ -369,34 +418,34 @@ tracker = function (db,t)
       assert(changes,"NO CHANGES TABLE in META TABLE")
       if k == "commit" then print('cannot change the "commit" key') return end
       local action = nil
-      if rawget(t,k) == nil then 
+      if rawget(t,k) == nil then
         --run the "insert" item function
         action = "add"
         if debug_flag then print('add') end
-      elseif v == nil then 
+      elseif v == nil then
         --run the delete item function
         action = "delete"
         if debug_flag then print('nil/delete') end
-      else 
+      else
         --run the update item function
         action = "update"
         if debug_flag then print('udpate') end
-      end  
+      end
       --update the change tracking table. 
       -- We need to keep the action taken and the key reference?      
-      print("*update of element " .. tostring(k) ..
-        " to " .. tostring(v))
+      --print("*update of element " .. tostring(k) ..
+      -- " to " .. tostring(v))
 
       if changes[k] ~= nil then
         if changes[k] == "new" then
-          if action == "delete" then 
+          if action == "delete" then
             changes[k] = nil
           elseif action == "update" then
             --no change. still need to insert regardless of 
             -- the table contents so don't change state
           end
         elseif change[k] == "update" then
-          if action == "delete" then 
+          if action == "delete" then
             changes[k] = "delete"
           end
         elseif change[k] == "delete" then
@@ -406,7 +455,7 @@ tracker = function (db,t)
         end
       else
         changes[k] = action
-      end    
+      end
       t[k] = v --update original table
     end,
 
@@ -415,7 +464,7 @@ tracker = function (db,t)
       return function (_,k) --iteration function
         local nextkey, nextvalue = next(t,k)
         if nextkey ~=nil  then --avoid last value
-          print("*taversing element " .. tostring(nextkey))
+          --print("*taversing element " .. tostring(nextkey))
         end
         return nextkey, nextvalue
       end
@@ -427,7 +476,7 @@ tracker = function (db,t)
       local meta = getmetatable(proxy)
       if meta.database then
         meta.database:commit(proxy)
-      end      
+      end
     end
   }
 
@@ -457,7 +506,7 @@ end
 
 
 
-return { 
+return {
   new = new
 
 }

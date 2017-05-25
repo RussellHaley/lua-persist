@@ -93,14 +93,26 @@ end
 
 --players:commit()
 
-local t = db_check:get_all()
-local count = 0
-for i,v in pairs(t) do
-  count = count + 1
-  print(i)
-end
-print("count "..count)
-print(serpent.block(env:stats()))
+local t, count = env.list_dbs()
+
+print("count init "..count)
+
+local mydb1 = env.open_database("mydb1", true)
+
+mydb1:add(1,"one")
+local t, count = env.list_dbs()
+
+print("count one"..count)
+
+local mydb2 = env.open_database("mydb2",true)
+
+mydb2:add(2,"one")
+
+local t, count = env.list_dbs()
+
+print("count two "..count)
+
+print(serpent.block(t))
 env:close_env()
 
 
