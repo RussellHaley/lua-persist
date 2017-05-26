@@ -11,7 +11,16 @@ local readOnly
 local tracker
 local debug_flag = true
 
-local databases = {}
+
+
+---Prototype for LMDB Environment
+local persist = {}
+local env = {
+  --- a table of all the dbs opened for this env.
+  databases={}
+  }
+local db = {}
+local cursor = {}
 
 --- LMDB Wrapper
 local lightningmdb_lib = require("lightningmdb")
@@ -47,12 +56,12 @@ end
 -- Makes some assumptions about what we need (i.e. MDB.CREATE)
 -- @remarks: shouldn't we know at this point that the database
 -- actually exists? We don't need MDB.create
-local function open_tx(name,readonly)
+db.open_tx = function(self,name,readonly)
   local t,dh
   local opts
 
   if readonly then opts = MDB.RDONLY else opts = 0 end
-  t = assert(lmdb_env:txn_begin(nil, opts))
+  t = assert(self.env.lmdb_env:txn_begin(nil, opts))
   dh = assert(t:dbi_open(name, MDB.CREATE))
   return t, dh
 end
@@ -73,8 +82,8 @@ local function clean_items(key,value,throw_on_key)
 end
 
 --- Debug function to print the raw entries 
-local function db_print_entries(self)
-  local t,d = open_tx(self.name, true)
+db.print_entries = function (self)
+  local t,d = self.open_tx(self.name, true)
   local cursor, error, errorno = t:cursor_open(d)
   local k
   local ok
@@ -90,9 +99,9 @@ end
 --- This funciton is a raw get of all entries in the database
 -- It could use parameters for fetch size and offset? I don't
 -- know how that would be implemented yet
-local function db_get_keys(self)
+db.get_keys = function (self)
   local retval = {}
-  local t,d = open_tx(self.name, true)
+  local t,d = self:open_tx(self.name, true)
   local cursor, error, errorno = t:cursor_open(d)
   local k = 0
 
@@ -107,9 +116,9 @@ end
 --- This funciton is a raw get of all entries in the database
 -- It could use parameters for fetch size and offset? I don't
 -- know how that would be implemented yet
-local function db_get_entries(self)
+db.get_all = function (self)
   local retval = {}
-  local t,d = open_tx(self.name, true)
+  local t,d = self:open_tx(self.name, true)
   local cursor, error, errorno = t:cursor_open(d)
   local k = 0
 
@@ -132,9 +141,9 @@ end
 -- if a change tracker was used, only the changes
 -- (updates/new, delete) are applied to the database.
 -- otherwise we just puts everything in there (not implemented yet). 
-local db_commit = function(self,tbl)
+db.commit =  function (self,tbl)
   local has_tracker = false
-  local tx,db = open_tx(self.name)
+  local tx,db = self:open_tx(self.name)
   local ok, err, errno
   local cursor
   cursor, err, errno= tx:cursor_open(db)
@@ -177,8 +186,8 @@ end
 
 --- Runs a function over each value from the database and
 -- if it returns true, adds it to the return set.
-local function db_search_entries(self,func,...)
-  local tx,db = open_tx(self.name, true)
+db.search_entries = function (self,func,...)
+  local tx,db = self:open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(db)
   local k
   local retval= {}
@@ -194,16 +203,19 @@ local function db_search_entries(self,func,...)
 end
 
 --- Gets a single item from the database
-local function db_get_item(self,key)
-  local t,d = open_tx(self.name, true)
+db.get_item = function (self,key)
+  local t,d = self:open_tx(self.name, true)
   local ok,res,errno = t:get(d,key, _, 0)
   t:commit()
   return ok,res,errno
 end
 
-local function db_get_items(self,tbl)
+
+--- Searches the database for all the keys in tbl and returns a table of records.
+-- @param tbl table Table containing the keys for searching. The value is ignored.
+db.get_items = function (self,tbl)
   local retval = {}
-  local tx,db = open_tx(self.name, true)
+  local tx,db = self:open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(db)
   local k = 0
   for i,v in tbl do
@@ -216,9 +228,10 @@ local function db_get_items(self,tbl)
   cursor:close()
   tx:abort()
 end
+
 --- Adds all entries ina table to the database
-local function db_add_table_item(self,table)
-  local tx,db = open_tx(self.name)
+db.add_items= function (self,table)
+  local tx,db = self:open_tx(self.name)
   local ok, err, errno
   local cursor
   cursor, err, errno= tx:cursor_open(db)
@@ -241,8 +254,8 @@ local function db_add_table_item(self,table)
 end
 
 --- Checks if the database exists. This doesn't work!
-local function db_item_exists(self,key)
-  local t,d = open_tx(self.name)
+db.item_exists = function (self,key)
+  local t,d = self:open_tx(self.name)
   clean_items(key, nil, true)
   local ok, err, errno = t:get(d, key)
   if not ok then
@@ -254,9 +267,10 @@ local function db_item_exists(self,key)
 end
 
 
---If the item exists, throws an exception
-local function db_add_item(self,key,value)
-  local t,d = open_tx(self.name)
+--- Use this function to only insert the data if the key is already present and
+-- duplicates are not allowed.
+db.add_item = function (self,key,value)
+  local t,d = self:open_tx(self.name)
   --Need to wrap in pcall to catch errors.
   --should return key if success or 
   --nil, error, errorno
@@ -271,8 +285,8 @@ local function db_add_item(self,key,value)
 end
 
 --- Inserts or updates an item in the database
-local function db_upsert_item(key,value)
-  local t,d = open_tx(self.name)
+db.upsert_item = function (self,key,value)
+  local t,d = self:open_tx(self.name)
   key, value = clean_items(key,value, true)
   local ok, err, errno = t:put(d, key, value, 0)
   if not ok then
@@ -283,14 +297,17 @@ local function db_upsert_item(key,value)
   return key
 end
 
---need to check if database exists yet!
-local function open_database(name,create)
-  if lmdb_env then
-    if databases[name] then
-      return databases[name]
+--- Opens the named k,v database.
+-- @param name The name of the database to open. If the named database does not exist and the `create` parameter does
+-- not equate to true, the system asserts.
+-- @param create boolean Specify true if the system should create the database if it does not exist.
+env.open_database = function(self,name,create)
+  if self.lmdb_env then
+    if self.databases[name] then
+      return self.databases[name]
     end
 
-    local t = lmdb_env:txn_begin(nil, 0)
+    local t = self.lmdb_env:txn_begin(nil, 0)
     if name == "" then name = nil end
     local opts
     if create then
@@ -304,30 +321,22 @@ local function open_database(name,create)
     cursor:close()
     t:abort()
 
-    local db = {
-      name = name,
-      update = db_upsert_item,
-      add = db_add_item,
-      add_table = db_add_table_item,
-      print_all = db_print_entries,
-      search = db_search_entries,
-      get_item = db_get_item,
-      get_items = db_get_items,
-      commit = db_commit,
-      get_all = db_get_entries,
-      get_all_keys = db_get_keys
-    }
+    local mt = {__index = db }
+    local new_db = {}
+    setmetatable(new_db,mt)
+    new_db.name = name
+    new_db.env = self
 
-    if name ~= nil then databases[name] = db end
-    return db
+    if name ~= nil then self.databases[name] = new_db end
+    return new_db
   else
     return nil, "NO_ENV_AVAIL", 100
   end
 end
 
-local function list_databases()
-  local ldb = open_database("")
-  local t = ldb:get_all_keys()
+env.list_dbs = function(self)
+  local ldb = self:open_database("")
+  local t = ldb:get_keys()
   local count = 0
   for i in pairs(t) do
     count = count + 1
@@ -337,35 +346,35 @@ local function list_databases()
 end
 
 --- Returns the lmdb statistics as a table
-local function stats()
-  return lmdb_env:stat()
+env.stats = function(self)
+  return self.lmdb_env:stat()
 end
 
 --- Closes the environment/files
-local function close_env()
-  lmdb_env:close()
+env.close = function(self)
+  self.lmdb_env:close()
 end
 
 
-local function open(datadir)
+--- Open an existing database. Asserts if the data directory does not exist
+-- @param datadir Base directory that contains the database files
+persist.open = function(datadir)
   local cd = lfs.currentdir()
   assert(lfs.chdir(datadir))
   lfs.chdir(cd)
 
-  lmdb_env = lightningmdb.env_create()
-  lmdb_env:set_mapsize(10485760)
-  lmdb_env:set_maxdbs(4)
-  lmdb_env:open(datadir, 0, 420)
+  local mt = {__index = env }
+  local new_env = {}
+  setmetatable(new_env,mt)
 
-  return {
-    datadir = datadir,
-    databases = databases,
-    open_database = open_database,
-    open_tx = open_tx,
-    close_env = close_env,
-    list_dbs = list_databases,
-    stats = stats
-  }
+  new_env.datadir = datadir
+  new_env.lmdb_env = lightningmdb.env_create()
+  new_env.lmdb_env:set_mapsize(10485760)
+  new_env.lmdb_env:set_maxdbs(4)
+  new_env.lmdb_env:open(datadir, 0, 420)
+
+  return new_env
+
 end
 
 --- Returns a new lmdb environment. This is the base environment/file 
@@ -374,7 +383,7 @@ end
 -- @remarks Needs to be implemeneted like this:
 -- local function new(datadir,create_dir) and assert if not create dir and the dir doesn't exist
 -- Need to add an open to complement new only assert if it doesn't exist.
-local function new(datadir, warn)
+persist.new = function(datadir, warn)
   local cd = lfs.currentdir()
   local exists = lfs.chdir(datadir)
   lfs.chdir(cd)
@@ -386,7 +395,7 @@ local function new(datadir, warn)
     assert(lfs.mkdir(datadir))
   end
 
-  return open(datadir)
+  return persist.open(datadir)
 end
 
 --- Adds the changes table and the database to the base table specified in t. 
@@ -417,7 +426,8 @@ tracker = function (db,t)
       local changes = meta.changes
       assert(changes,"NO CHANGES TABLE in META TABLE")
       if k == "commit" then print('cannot change the "commit" key') return end
-      local action = nil
+      local action
+
       if rawget(t,k) == nil then
         --run the "insert" item function
         action = "add"
@@ -502,11 +512,4 @@ readOnly = function (t)
   return proxy
 end
 
-
-
-
-
-return {
-  new = new
-
-}
+return persist

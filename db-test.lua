@@ -1,10 +1,11 @@
 #!/usr/local/bin/lua
 
-local data = require("lmdb_env")
+local persist = require("lmdb_env")
 local m = require("moses")
-local env = data.new("data")
+local env1 = persist.new("data")
+local env2 = persist.new("data2")
 local serpent = require("serpent")
-db_check = env.open_database("")
+
 --db_players = env.open_database("players")
 --db_year_player = env.open_database("year_players")
 --teams_db = env.open_database("team")
@@ -93,28 +94,34 @@ end
 
 --players:commit()
 
-local t, count = env.list_dbs()
+local t, count = env1:list_dbs()
 
 print("count init "..count)
 
-local mydb1 = env.open_database("mydb1", true)
+local mydb1 = env1:open_database("mydb1", true)
 
-mydb1:add(1,"one")
-local t, count = env.list_dbs()
+mydb1:add_item(1,"one")
+local t, count = env1:list_dbs()
 
 print("count one"..count)
 
-local mydb2 = env.open_database("mydb2",true)
+local mydb2 = env1:open_database("mydb2",true)
 
-mydb2:add(2,"one")
+mydb2:add_item(2,"one")
 
-local t, count = env.list_dbs()
+local t, count = env1:list_dbs()
 
 print("count two "..count)
 
-print(serpent.block(t))
-env:close_env()
+local e2db1 = env2:open_database("testy",true)
+e2db1:add_item("A1","No good deed will go unpunished")
+local t2,c2 = env2:list_dbs()
 
+print("data2 count "..c2)
+
+print(serpent.block(t2))
+env1:close()
+env2:close()
 
 
 
