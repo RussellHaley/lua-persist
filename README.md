@@ -1,72 +1,53 @@
-lua-persist aka Gilead is a table manipulation and persistence library. It allows you to perform lighting fast key searches and create indexes based on persisted table values. 
+#lua-persist
 
-do
-local p = require('lua-persist')
-local env = p.open_env('~/mydir') 
-
-local ts = env.open_tableset('my_new_table')
-
-local t = {}
-
-t[1] = 21
-t[2]= 33
-t["three"] = {"a"="b","c"="d"}
-
-ts:add_table(t)
-
-local cursor = ts:open_cursor(true,10)
-
-if cursor then
-  for i,v in random_generator(100000) do
-    if i == 44444 then 
-      cursor:insert(3,21)
-      cursor:insert(4,21)
-      cursor:insert(5,33)
-    end
-    if i == 20000 or i == 57231 or i = 77777 then 
-      local t = {}            
-      t["three"..i] = {"a"="b","c"="d"}      
-      cursor:insert_table(t)
-    else
-      cursor:insert(i,v)
-    end
-    
-  end
-  cursor:commit():close()  
-end
-
-ts:add_item("four",4)
-
-ts:close()
-
-local idx, err, errno = env.create_index('my_index','my_new_table', function(k,v,...) if type(v) = table return v.c end )
-
-if idx then
-  idx:index()
-  idx:close()
-end
-
-ts = env.open_tableset('my_new_table',true) --true indicates it should assert if the table doesn't exist already
-
-ts:fetchedIndexed('my_index_name', "b"):forEach(function(k,v) v["e"] = "f" end):commit()
-
-ts:close()
+lua-persist is a persistence and indexing library for lua tables. It allows you to perform lighting fast searches on keys or create indexes based on persisted table values. The second phase of the project is to integrate it with the Moses library to provide a single point for table manipulation and persistence.
 
 
+Required tests:
+create new env
+open existing env
+close env
 
-creating indexes
+open database
+- create if not exists
 
-table_index
-table_name, index_name
+- Single Key
+	add item
+	add items
+	update item
+	update items
+	commit(t)
+	delete item
+	delete items
 
-index
-index_name, function
+-Duplicate Support
+	add item
+	add items
+	update item
+	update items
+	commit(t)
+	delete item
+	delete items
 
+-read only
+	- open
+	- attempt to add
+	- attempt to delete
+	- attempt to update
 
+Indexes
+	-create index
+	- add item:test index
+	- add items:test index
+	- update value: test index
+	- delete item: test index
+	- re-index
+	- delete index
 
+currently have two issues:
 
-
-
+1) duplicate support and how to pass options to LMDB
+2) creating default databases OR having to always check for their existence
 
 
 
