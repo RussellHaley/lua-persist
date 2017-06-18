@@ -55,6 +55,8 @@ end
 
 --- Opens an lmdb transaction.
 -- Makes some assumptions about what we need (i.e. MDB.CREATE)
+-- @param name The name of the database to open
+-- @param readonly Optional flag to open a readonly transaction
 db.open_tx = function(self,name,readonly)
   local tx,dh
   local opts
@@ -73,17 +75,33 @@ end
 ---Checks the transaction to see if tx is not null and if the transaction flags
 -- allow for a write to the environment
 -- NOTE: Does not check the transaction yet.
+-- @param tx The transaction to check
+-- @return tx Cleaned transaction or nil
+-- @return dh database handle or error message
+-- @return commit_flag or error number
 db.check_tx = function(self,tx)
-  local dh
+  local dh, err, errno
   if tx then
     --local state = tx:mt_flags
-    dh = tx:dbi_open(self.name, MDB.DUPSORT)
+    dh, err, errno = tx:dbi_open(self.name, MDB.DUPSORT)
+    if dh then
+      return tx, dh
+    else
+      return dh, err, errno
+    end
   else
-    tx, dh = self:open_tx(self.name)
+    tx, dh, errno = self:open_tx(self.name)
+    -- true indicates the commit_flag return value
+    return tx, dh, errno or true
   end
 end
 
 --- Checks the entry for valid values and serialises tables.
+-- @param key The item key that is checked and serialized if necessary
+-- @param value The table item value to check and serialize if necessary
+-- @param throw_on_key Throws an error if the key is a table. ?
+-- @return key cleaned key
+-- @return value cleaned value
 local function clean_items(key,value,throw_on_key)
   if type(key) == 'table' then
     if throw_on_key then error('Key cannot be of type table.') end
@@ -153,28 +171,28 @@ db.get_all = function (self)
   return tracker(self, retval)
 end
 
---- Commits values to the database from a table.
--- If a tracker table was used, only the changes
--- (updates/new, delete) are applied to the database.
--- otherwise we just puts everything in there (not implemented yet). 
-db.commit =  function (self,tbl)
-  local has_tracker = false
-  local tx, dh = self:open_tx(self.name)
-  local ok, err, errno
-  local cursor
-  cursor, err, errno= tx:cursor_open(dh)
-  if not cursor then
-    tx:abort()
-    return nil, err, errno
-  end
-
-  local meta = getmetatable(tbl)
+--- Commits values to the database from a tracker table.
+-- only the changes(updates/new, delete) are applied to the database.
+-- returns nil and an error if a regular table is used. NOTE: This api is not
+-- currently thread safe if an optional transaction is specified
+-- @param tt Tracker Table containing recordset and meta about the changes made to the data.
+-- @param tx Optional transaction. NOTE: If a transaction is specified, the tracker table is committed as a CHILD
+-- TRANSACTION that must be completed with no errors. NO OTHER actions on this transaction can occur at the same time.
+db.commit =  function (self,tt, tx)
+  local meta = getmetatable(tt)
   if meta and meta.changes then
-    has_tracker = true
+    local tx, dh = self:open_tx(self.name)
+    local ok, err, errno
+    local cursor
+    cursor, err, errno= tx:cursor_open(dh)
+    if not cursor then
+      tx:abort()
+      return nil, err, errno
+    end
     local count = 0
     for k,action in pairs(meta.changes) do
       local v
-      k,v = clean_items(k,tbl[k],true)
+      k,v = clean_items(k,tt[k],true)
       if action == "add" or action == "update" then
         ok, err, errno = cursor:put(k,v,0)
       elseif action == "delete" then
@@ -187,16 +205,15 @@ db.commit =  function (self,tbl)
         return nil, err, errno
       end
     end
-
+    cursor:close()
+    tx:commit()
+    if debug then
+      print("Has tracker: "..tostring(has_tracker))
+      print("Changes Committed: ".. count)
+    end
   else
-    --non-tracked. update all???
-  end
-
-  cursor:close()
-  tx:commit()
-  if debug then
-    print("Has tracker: "..tostring(has_tracker))
-    print("Changes Committed: ".. count)
+    -- non-tracked. update all
+    return nil, errors.COMMIT_NOT_A_TRACKER_TABLE.err, errors.COMMIT_NOT_A_TRACKER_TABLE.errno
   end
 end
 
@@ -287,19 +304,17 @@ end
 
 
 
---- Use this function to only insert the data if the key is already present and
--- duplicates are not allowed.
+--- Use this function to only insert the data if the key is already present and duplicates are not allowed.
 db.add_item = function (self,key,value,tx)
-  local dh
-  local commit_flag
-  if not tx then commit_flag = true end
-  tx = self.check_tx(tx)
-  --Need to wrap in pcall to catch errors.
-  --should return key if success or 
-  --nil, error, errorno
+  local dh, cf
+  tx, dh, cf = self.check_tx(tx)
+
+  -- If the transaction fails, dh and cf will specify the error message and error number
+  if not tx then return dh,cf end
+
   key, value = clean_items(key,value, true)
   local ok, err, errno = tx:put(dh, key, value, MDB.NOOVERWRITE)
-  if commit_flag then
+  if cf then
     if not ok then
       tx:abort()
       return nil, err, errno
