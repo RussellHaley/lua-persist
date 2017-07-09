@@ -1,0 +1,384 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>lua-persist</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-persist</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Tables">Tables</a></li>
+<li><a href="#Fields">Fields</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/database.html">database</a></li>
+  <li><a href="../modules/errors.html">errors</a></li>
+  <li><a href="../modules/lmdb-flags.html">lmdb-flags</a></li>
+  <li><strong>persist</strong></li>
+</ul>
+<h2>Source</h2>
+<ul class="nowrap">
+  <li><a href="../source/db-test.lua.html">db-test.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>persist</code></h1>
+<p>lua-persist.</p>
+<p> This is the core library for the Gilead project.
+ It provides a wraper around LMDB and provides the following general modules:
+ environment - the lmdb environment
+ database - a wraper around database functionality
+ tracker - a table designed to track changes for persistence
+ cursor - not implemented
+ index - not implemented</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#cursor_pairs">cursor_pairs (cursor_, key_, op_)</a></td>
+	<td class="summary">cursor_pairs.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#env.open_database">env.open_database (self, name, options, create)</a></td>
+	<td class="summary">Opens the named k,v database.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#env.list_dbs">env.list_dbs (self)</a></td>
+	<td class="summary">List the databases contained in the lmdb environment</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#env.stats">env.stats (self)</a></td>
+	<td class="summary">Returns the lmdb environment statistics as a table</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#env.close">env.close (self)</a></td>
+	<td class="summary">Closes the environment/files</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#open">open (datadir)</a></td>
+	<td class="summary">Open an existing database.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#open_or_new">open_or_new (datadir)</a></td>
+	<td class="summary">Opens a database or creates a new one if it does not exist</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#new">new (datadir)</a></td>
+	<td class="summary">Returns a new lmdb environment.</td>
+	</tr>
+</table>
+<h2><a href="#Tables">Tables</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#persist">persist</a></td>
+	<td class="summary">The libraries main module</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#databases">databases</a></td>
+	<td class="summary">a table of all the dbs opened for this env.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#lightningmdb_lib">lightningmdb_lib</a></td>
+	<td class="summary">LMDB Wrapper</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#lfs">lfs</a></td>
+	<td class="summary">Filesystem</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "cursor_pairs"></a>
+    <strong>cursor_pairs (cursor_, key_, op_)</strong>
+    </dt>
+    <dd>
+    cursor_pairs.  Use a coroutine to iterate through the open lmdb data set
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">cursor_</span>
+         cursor used for retrieving item
+        </li>
+        <li><span class="parameter">key_</span>
+         The key to retrieve
+        </li>
+        <li><span class="parameter">op_</span>
+         the operation to perform default is MDB.NEXT
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "env.open_database"></a>
+    <strong>env.open_database (self, name, options, create)</strong>
+    </dt>
+    <dd>
+    Opens the named k,v database.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">self</span>
+         The database environment
+        </li>
+        <li><span class="parameter">name</span>
+         The name of the database to open. If the named database does not exist and the `create` parameter does
+ not equate to true, the system asserts.
+        </li>
+        <li><span class="parameter">options</span>
+         table containing lmdb options. NOT IMPLEMENTED YET.
+        </li>
+        <li><span class="parameter">create</span>
+         boolean Specify true if the system should create the database if it does not exist.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "env.list_dbs"></a>
+    <strong>env.list_dbs (self)</strong>
+    </dt>
+    <dd>
+    List the databases contained in the lmdb environment
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">self</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "env.stats"></a>
+    <strong>env.stats (self)</strong>
+    </dt>
+    <dd>
+    Returns the lmdb environment statistics as a table
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">self</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "env.close"></a>
+    <strong>env.close (self)</strong>
+    </dt>
+    <dd>
+    Closes the environment/files
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">self</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "open"></a>
+    <strong>open (datadir)</strong>
+    </dt>
+    <dd>
+    Open an existing database.  Asserts if the data directory does not exist
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">datadir</span>
+         Base directory that contains the database files
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "open_or_new"></a>
+    <strong>open_or_new (datadir)</strong>
+    </dt>
+    <dd>
+    Opens a database or creates a new one if it does not exist
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">datadir</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "new"></a>
+    <strong>new (datadir)</strong>
+    </dt>
+    <dd>
+    Returns a new lmdb environment.  Throws an error if it already exists.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">datadir</span>
+         A base directory to find the lmdb files.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Tables"></a>Tables</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "persist"></a>
+    <strong>persist</strong>
+    </dt>
+    <dd>
+    The libraries main module
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "databases"></a>
+    <strong>databases</strong>
+    </dt>
+    <dd>
+    a table of all the dbs opened for this env.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "lightningmdb_lib"></a>
+    <strong>lightningmdb_lib</strong>
+    </dt>
+    <dd>
+    LMDB Wrapper
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "lfs"></a>
+    <strong>lfs</strong>
+    </dt>
+    <dd>
+    Filesystem
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
+<i style="float:right;">Last updated 2017-07-08 23:10:39 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

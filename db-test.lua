@@ -1,4 +1,5 @@
 #!/usr/local/bin/lua
+--- @file db-test.lua
 
 local persist = require("persist")
 local m = require("moses")

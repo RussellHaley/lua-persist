@@ -1,7 +1,8 @@
 --- Constant representation of the LMDB flags. I would like to separate these out the same way as the
 -- lmdb documentation does.
+
 local LMDB_FLAGS = {
---- LMDB database defines as a constant table. This data is exported from the lightningmdb module.
+-- LMDB database defines as a constant table. This data is exported from the lightningmdb module.
   DB_FLAGS ={
     --- use reverse string keys
     REVERSEKEY = 0x2,

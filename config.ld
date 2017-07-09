@@ -1,4 +1,3 @@
-format = 'markdown'
 project = "lua-persist"
 title = "lua-persist"
 description = [[A persistence and indexing system for lua tables]]

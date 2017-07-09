@@ -1,0 +1,539 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>lua-persist</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-persist</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Tables">Tables</a></li>
+<li><a href="#Fields">Fields</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/database.html">database</a></li>
+  <li><a href="../modules/errors.html">errors</a></li>
+  <li><strong>lmdb-flags</strong></li>
+  <li><a href="../modules/persist.html">persist</a></li>
+</ul>
+<h2>Source</h2>
+<ul class="nowrap">
+  <li><a href="../source/db-test.lua.html">db-test.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>lmdb-flags</code></h1>
+<p>Constant representation of the LMDB flags.</p>
+<p> I would like to separate these out the same way as the
+ lmdb documentation does.</p>
+
+
+<h2><a href="#Tables">Tables</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#RETURN_CODES">RETURN_CODES</a></td>
+	<td class="summary">LMDB return code defines as a constant table.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#MDB">MDB</a></td>
+	<td class="summary">ALL LMDB defines as a constant table.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TXN">TXN</a></td>
+	<td class="summary">Transaction return codes.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#REVERSEKEY">REVERSEKEY</a></td>
+	<td class="summary">use reverse string keys</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#DUPSORT">DUPSORT</a></td>
+	<td class="summary">use sorted duplicates.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#INTEGERKEY">INTEGERKEY</a></td>
+	<td class="summary">numeric keys in native byte order: either unsigned int or size_t.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#DUPFIXED">DUPFIXED</a></td>
+	<td class="summary">with MDB_DUPSORT, sorted dup items have fixed size NOTE: Not applicable to lua-persist</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#INTEGERDUP">INTEGERDUP</a></td>
+	<td class="summary">with MDB_DUPSORT, dups are MDB_INTEGERKEY-style integers</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#REVERSEDUP">REVERSEDUP</a></td>
+	<td class="summary">with MDB_DUPSORT, use reverse string dups</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CREATE">CREATE</a></td>
+	<td class="summary">create DB if not already existing</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Tables"></a>Tables</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "RETURN_CODES"></a>
+    <strong>RETURN_CODES</strong>
+    </dt>
+    <dd>
+    LMDB return code defines as a constant table.  This data is exported from the lightningmdb module.
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">SUCCESS</span>
+
+        </li>
+        <li><span class="parameter">DBS_FULL</span>
+
+        </li>
+        <li><span class="parameter">TXN_FULL</span>
+
+        </li>
+        <li><span class="parameter">CORRUPTED</span>
+
+        </li>
+        <li><span class="parameter">VERSION_MISMATCH</span>
+
+        </li>
+        <li><span class="parameter">NOTFOUND</span>
+
+        </li>
+        <li><span class="parameter">MAP_RESIZED</span>
+
+        </li>
+        <li><span class="parameter">KEYEXIST</span>
+
+        </li>
+        <li><span class="parameter">PANIC</span>
+
+        </li>
+        <li><span class="parameter">TLS_FULL</span>
+
+        </li>
+        <li><span class="parameter">MAP_FULL</span>
+
+        </li>
+        <li><span class="parameter">INVALID</span>
+
+        </li>
+        <li><span class="parameter">PAGE_NOTFOUND</span>
+
+        </li>
+        <li><span class="parameter">CURSOR_FULL</span>
+
+        </li>
+        <li><span class="parameter">PAGE_FULL</span>
+
+        </li>
+        <li><span class="parameter">INCOMPATIBLE</span>
+
+        </li>
+        <li><span class="parameter">READERS_FULL</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "MDB"></a>
+    <strong>MDB</strong>
+    </dt>
+    <dd>
+    ALL LMDB defines as a constant table.  This data is exported from the lightningmdb module. Inclusive of RETURN_CODES
+ AND DB_FLAGS
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">APPEND</span>
+
+        </li>
+        <li><span class="parameter">APPENDDUP</span>
+
+        </li>
+        <li><span class="parameter">CORRUPTED</span>
+
+        </li>
+        <li><span class="parameter">CREATE</span>
+
+        </li>
+        <li><span class="parameter">CURRENT</span>
+
+        </li>
+        <li><span class="parameter">CURSOR_FULL</span>
+
+        </li>
+        <li><span class="parameter">DBS_FULL</span>
+
+        </li>
+        <li><span class="parameter">DUPFIXED</span>
+        Adds duplicate key support for a database
+        </li>
+        <li><span class="parameter">DUPSORT</span>
+
+        </li>
+        <li><span class="parameter">FIRST</span>
+
+        </li>
+        <li><span class="parameter">FIRST_DUP</span>
+
+        </li>
+        <li><span class="parameter">FIXEDMAP</span>
+
+        </li>
+        <li><span class="parameter">GET_BOTH</span>
+
+        </li>
+        <li><span class="parameter">GET_BOTH_RANGE</span>
+
+        </li>
+        <li><span class="parameter">GET_CURRENT</span>
+
+        </li>
+        <li><span class="parameter">GET_MULTIPLE</span>
+
+        </li>
+        <li><span class="parameter">INCOMPATIBLE</span>
+
+        </li>
+        <li><span class="parameter">INTEGERDUP</span>
+
+        </li>
+        <li><span class="parameter">INTEGERKEY</span>
+
+        </li>
+        <li><span class="parameter">INVALID</span>
+
+        </li>
+        <li><span class="parameter">KEYEXIST</span>
+
+        </li>
+        <li><span class="parameter">LAST</span>
+
+        </li>
+        <li><span class="parameter">LAST_DUP</span>
+
+        </li>
+        <li><span class="parameter">MAPASYNC</span>
+
+        </li>
+        <li><span class="parameter">MAP_FULL</span>
+
+        </li>
+        <li><span class="parameter">MAP_RESIZED</span>
+
+        </li>
+        <li><span class="parameter">MULTIPLE</span>
+
+        </li>
+        <li><span class="parameter">NEXT</span>
+
+        </li>
+        <li><span class="parameter">NEXT_DUP</span>
+
+        </li>
+        <li><span class="parameter">NEXT_MULTIPLE</span>
+
+        </li>
+        <li><span class="parameter">NEXT_NODUP</span>
+
+        </li>
+        <li><span class="parameter">NODUPDATA</span>
+
+        </li>
+        <li><span class="parameter">NOLOCK</span>
+
+        </li>
+        <li><span class="parameter">NOMEMINIT</span>
+
+        </li>
+        <li><span class="parameter">NOMETASYNC</span>
+
+        </li>
+        <li><span class="parameter">NOOVERWRITE</span>
+
+        </li>
+        <li><span class="parameter">NORDAHEAD</span>
+
+        </li>
+        <li><span class="parameter">NOSUBDIR</span>
+
+        </li>
+        <li><span class="parameter">NOSYNC</span>
+
+        </li>
+        <li><span class="parameter">NOTFOUND</span>
+
+        </li>
+        <li><span class="parameter">NOTLS</span>
+
+        </li>
+        <li><span class="parameter">PAGE_FULL</span>
+
+        </li>
+        <li><span class="parameter">PAGE_NOTFOUND</span>
+
+        </li>
+        <li><span class="parameter">PANIC</span>
+
+        </li>
+        <li><span class="parameter">PREV</span>
+
+        </li>
+        <li><span class="parameter">PREV_DUP</span>
+
+        </li>
+        <li><span class="parameter">PREV_NODUP</span>
+
+        </li>
+        <li><span class="parameter">RDONLY</span>
+
+        </li>
+        <li><span class="parameter">READERS_FULL</span>
+
+        </li>
+        <li><span class="parameter">RESERVE</span>
+
+        </li>
+        <li><span class="parameter">REVERSEDUP</span>
+
+        </li>
+        <li><span class="parameter">REVERSEKEY</span>
+
+        </li>
+        <li><span class="parameter">SET</span>
+
+        </li>
+        <li><span class="parameter">SET_KEY</span>
+
+        </li>
+        <li><span class="parameter">SET_RANGE</span>
+
+        </li>
+        <li><span class="parameter">SUCCESS</span>
+
+        </li>
+        <li><span class="parameter">TLS_FULL</span>
+
+        </li>
+        <li><span class="parameter">TXN_FULL</span>
+
+        </li>
+        <li><span class="parameter">VERSION_MISMATCH</span>
+
+        </li>
+        <li><span class="parameter">WRITEMAP</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TXN"></a>
+    <strong>TXN</strong>
+    </dt>
+    <dd>
+    Transaction return codes.  This list is notpart of the MDB items
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">TXN_BEGIN</span>
+
+        </li>
+        <li><span class="parameter">TXN_RDONLY</span>
+
+        </li>
+        <li><span class="parameter">TXN_WRITEMAP</span>
+
+        </li>
+        <li><span class="parameter">TXN_FINISHED</span>
+
+        </li>
+        <li><span class="parameter">TXN_ERROR</span>
+
+        </li>
+        <li><span class="parameter">TXN_DIRTY</span>
+
+        </li>
+        <li><span class="parameter">TXN_SPILLS</span>
+
+        </li>
+        <li><span class="parameter">TXN_HAS_CHILD</span>
+
+        </li>
+        <li><span class="parameter">TXN_BLOCKED</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "REVERSEKEY"></a>
+    <strong>REVERSEKEY</strong>
+    </dt>
+    <dd>
+    use reverse string keys
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "DUPSORT"></a>
+    <strong>DUPSORT</strong>
+    </dt>
+    <dd>
+    use sorted duplicates.  Adds duplicate key support for a database
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "INTEGERKEY"></a>
+    <strong>INTEGERKEY</strong>
+    </dt>
+    <dd>
+    numeric keys in native byte order: either unsigned int or size_t.  The keys must all be of the same size.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "DUPFIXED"></a>
+    <strong>DUPFIXED</strong>
+    </dt>
+    <dd>
+    with MDB_DUPSORT, sorted dup items have fixed size NOTE: Not applicable to lua-persist
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "INTEGERDUP"></a>
+    <strong>INTEGERDUP</strong>
+    </dt>
+    <dd>
+    with MDB_DUPSORT, dups are MDB_INTEGERKEY-style integers
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "REVERSEDUP"></a>
+    <strong>REVERSEDUP</strong>
+    </dt>
+    <dd>
+    with MDB_DUPSORT, use reverse string dups
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CREATE"></a>
+    <strong>CREATE</strong>
+    </dt>
+    <dd>
+    create DB if not already existing
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
+<i style="float:right;">Last updated 2017-07-08 23:10:39 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

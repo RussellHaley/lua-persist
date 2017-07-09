@@ -1,8 +1,10 @@
 --- table listing for errors
 
---- An enumeration for errors and error numbers
+-- An enumeration for errors and error numbers
 local errors = {
+  -- Feature not implemented
   NOT_IMPLEMENTED = {errno = -1, err ="This feature is not yet implemented."},
+  -- The Env was not available
   NO_ENV_AVAIL = {errno=1, err ="The expected lmdb environment does not exist. An error has occured during initialization." },
   NO_DATABASES_DB = {errno=2,err="Did not find the expected __databases database. There is an error in your environment"},
   COMMIT_NOT_A_TRACKER_TABLE = {errno=3,err="You did not use a tracker table and called commit. Use db:add_item instead."}
