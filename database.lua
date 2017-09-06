@@ -20,13 +20,13 @@ local database = {}
 local tracker
 
 ---prototype for a database
-local db = {duplicates=false, indexes={}, relationships={} }
+local proto = {duplicates=false, indexes={}, relationships={} }
 
 --- Opens an lmdb transaction.
 -- Makes some assumptions and applies DUPSORT, which is not always desired
 -- @param name The name of the database to open
 -- @param readonly Optional flag to open a readonly transaction
-db.open_tx = function(self,name,readonly)
+proto.open_tx = function(self,name,readonly)
   local tx,dh
   local opts
 
@@ -36,7 +36,7 @@ db.open_tx = function(self,name,readonly)
     opts = 0
   end
 
-  tx = assert(self.env.lmdb_env:txn_begin(nil, opts))
+  tx = assert(self.lmdb_env:txn_begin(nil, opts))
   dh = assert(tx:dbi_open(name, MDB.DUPSORT))
   return tx, dh
 end
@@ -48,7 +48,7 @@ end
 -- @return tx Cleaned transaction or nil
 -- @return dh database handle or error message
 -- @return commit_flag or error number
-db.check_tx = function(self,tx)
+proto.check_tx = function(self,tx)
   local dh, err, errno
   if tx then
     --local state = tx:mt_flags
@@ -85,7 +85,7 @@ local function clean_items(key,value,throw_on_key)
 end
 
 --- Debug function to print the raw entries
-db.print_entries = function (self)
+proto.print_entries = function (self)
   local tx,dh = self.open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(dh)
   local k
@@ -102,7 +102,7 @@ end
 --- This funciton is a raw get of all KEYS in the database
 -- It could use parameters for fetch size and offset? I don't
 -- know how that would be implemented yet
-db.get_keys = function (self)
+proto.get_keys = function (self)
   local retval = {}
   local tx,dh = self:open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(dh)
@@ -119,7 +119,7 @@ end
 --- This funciton is a raw get of all ENTRIES in the database
 -- It could use parameters for fetch size and offset? I don't
 -- know how that would be implemented yet
-db.get_all = function (self)
+proto.get_all = function (self)
   local retval = {}
   local tx, dh = self:open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(dh)
@@ -147,7 +147,7 @@ end
 -- @param tt Tracker Table containing recordset and meta about the changes made to the data.
 -- @param tx Optional transaction. NOTE: If a transaction is specified, the tracker table is committed as a CHILD
 -- TRANSACTION that must be completed with no errors. NO OTHER actions on this transaction can occur at the same time.
-db.commit =  function (self,tt, tx)
+proto.commit =  function (self,tt, tx)
   local meta = getmetatable(tt)
   if meta and meta.changes then
     local tx, dh = self:open_tx(self.name)
@@ -191,7 +191,7 @@ end
 -- @param func A function for searching a table entry. The function signature should support
 -- parameters for key, value and any optional items you want to specify
 -- @return Returns a tracker table of all values found in the database that matched the search.
-db.search_entries = function (self,func,...)
+proto.search_entries = function (self,func,...)
   local tx, dh = self:open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(dh)
   local k
@@ -209,7 +209,7 @@ end
 
 --- Gets a single item from the database
 -- @param key The item key for the database to retrieve
-db.get_item = function (self,key)
+proto.get_item = function (self,key)
   local tx, dh = self:open_tx(self.name, true)
   local ok,res,errno = tx:get(dh,key, _)
   tx:commit()
@@ -220,7 +220,7 @@ end
 --- Searches the database for all the keys in tbl and returns a table of records.
 -- @param self The lp database object
 -- @param tbl Table containing the keys for searching. The value is ignored.
-db.get_items = function (self,tbl)
+proto.get_items = function (self,tbl)
   local retval = {}
   local tx, dh = self:open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(dh)
@@ -239,7 +239,7 @@ end
 --- Adds all entries ina table to the database
 -- @param items A table containing the items to be committed
 -- @return On success returns true. On error returns nil, err, errno
-db.add_items= function (self,items)
+proto.add_items= function (self,items)
   local tx, dh = self:open_tx(self.name)
   local ok, err, errno
   local cursor
@@ -267,7 +267,7 @@ end
 --- Checks if the database exists. This doesn't work!
 -- @param key The key to find
 -- @return On success returns true. On Error returns nil, err, errno
-db.item_exists = function (self,key)
+proto.item_exists = function (self,key)
   local tx, dh = self:open_tx(self.name)
   clean_items(key, nil, true)
   local ok, err, errno = tx:get(dh, key)
@@ -282,9 +282,9 @@ end
 
 
 --- Use this function to only insert the data if the key is already present and duplicates are not allowed.
-db.add_item = function (self,key,value,tx)
+proto.add_item = function (self,key,value,tx)
   local dh, cf
-  tx, dh, cf = self.check_tx(tx)
+  tx, dh, cf = self:check_tx(tx)
 
   -- If the transaction fails, dh and cf will specify the error message and error number
   if not tx then return dh,cf end
@@ -304,7 +304,7 @@ end
 --- Inserts or updates an item in the database
 -- @param key The key item to add to the database
 -- @param value The value item to add to the databse at key
-db.upsert_item = function (self,key,value)
+proto.upsert_item = function (self,key,value)
   local tx, dh = self:open_tx(self.name)
   key, value = clean_items(key,value, true)
   local ok, err, errno = tx:put(dh, key, value, 0)
@@ -317,7 +317,7 @@ db.upsert_item = function (self,key,value)
 end
 
 --- Returns database statistics including the number of entries
-db.stats = function(self)
+proto.stats = function(self)
   local tx, dh = self:open_tx(self.name,true)
   local stats,err,errno = tx:stat(dh)
   tx:commit()
@@ -325,21 +325,15 @@ db.stats = function(self)
 end
 
 --- Returns a count of entries for a database
-db.count = function(self)
+proto.count = function(self)
   local stats = self:stats()
   return stats.ms_entries
 end
 
-
-
-local new_db = function(lmdb_env,name)
-  local mt = {__index = db }
-  local new_db = {}
-  setmetatable(new_db,mt)
-  new_db.name = name
-  new_db.env = lmdb_env
-
-  return new_db
+proto.close = function(self)
+  --De-allocate self from env.databases?
+  --update any indexes?
+  --any cleanup?
 end
 
 
@@ -348,7 +342,7 @@ end
 -- @param db Will assert if null. Should have check for actual database object.
 -- @param t Base table for tracking. If t is null a blank table is used.
 -- @return A proxy table for the original data that tracks all changes to the data.
-tracker = function (db,t)
+local tracker = function (db,t)
 
   assert(db,"Database is null");
 
@@ -446,7 +440,7 @@ tracker = function (db,t)
 end
 
 --- Creates a read only table.
-readOnly = function (t)
+local readOnly = function (t)
   local proxy = {}
 
   local mt = {
@@ -460,7 +454,17 @@ readOnly = function (t)
 end
 
 
-database.new = new_db
+database.new = function(self, lmdb_env, name)
+  local mt = {__index = proto }
+  local new_db = {}
+  setmetatable(new_db,mt)
+  new_db.name = name
+  new_db.lmdb_env = lmdb_env
+
+  return new_db
+end
+
+
 database.tracker = tracker
 
 return database

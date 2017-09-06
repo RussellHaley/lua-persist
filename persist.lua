@@ -11,6 +11,7 @@ local readOnly
 
 local debug_flag = true
 
+local serpent = require("serpent")
 local errors = require('errors')
 
 local pdb = require("database")
@@ -64,55 +65,78 @@ function cursor_pairs(cursor_, key_, op_)
 end
 
 
---- Opens the named k,v database.
--- @param self The database environment
--- @param name The name of the database to open. If the named database does not exist and the `create` parameter does
--- not equate to true, the system asserts.
--- @param options table containing lmdb options. NOT IMPLEMENTED YET.
--- @param create boolean Specify true if the system should create the database if it does not exist.
-env.open_database = function(self, name, create)
-
-  assert(type(self) == "table","open_database must be called using the colon ':' notation. example: env:open_database('name',true)")
-
-  if name == "" then name = nil end
-  if create and not name then return nil, "Cannot create database with a name of blank ('') or nil." end
-
-  if self.lmdb_env then
-    if self.databases[name] then
-
-      return self.databases[name]
+local opendb = function(env,name,opts)
+  if env.lmdb_env then
+    if env.databases[name] then
+    --AARGH! CHECK THE STATE FIRST!
+      return env.databases[name]
     end
-
-    local tx = self.lmdb_env:txn_begin(nil, 0)
-    local _db = pdb:new_db(name)
-    if name ~= nil then self.databases[name] = new_db end
-    local opts
-    if create then
-
-      opts = MDB.CREATE
-      self.index:add_item(name,_db,tx)
-
-    else
-      opts = 0
-    end
+    
+    local tx = env.lmdb_env:txn_begin(nil, 0)
+    --assert if it fails to open correctly. non-recoverable
     local dh = assert(tx:dbi_open(name, opts))
-
     --This code may be unnecessary
     local cursor = tx:cursor_open(dh)
     cursor:close()
     tx:commit()
-
+    local _db = pdb:new(env.lmdb_env, name)    
+    --env.database tracks the open databases. self.index is a database
+    -- to track index the databases we have in lmdb. 
+    if name ~= nil then env.databases[name] = _db end
+    
+    --NEED TO BITWISE AND THIS? How to test all options.
+    if opt == MDB.CREATE then
+      self.index:add_item(name,_db,tx)
+    end
     return _db
   else
     return nil, errors.NO_ENV_AVAIL.err, errors.NO_ENV_AVAIL.errno
   end
 end
 
+env.new_database = function(self, name)
+  assert(type(self) == "table", errors.MUST_USE_SELF.err)
+  if name == "" then name = nil end
+  if not name then return nil, "Cannot create database with a name of blank ('') or nil." end
+
+  local opts
+  opts = MDB.CREATE
+  return opendb(self,name,opts)
+end
+
+
+--- Opens the named k,v database.
+-- @param self The database environment
+-- @param name The name of the database to open. If the named database does not exist and the `create` parameter does
+-- not equate to true, the system asserts.
+-- @param options table containing lmdb options. NOT IMPLEMENTED YET.
+-- @param create boolean Specify true if the system should create the database if it does not exist.
+env.open_database = function(self, name)
+  assert(type(self) == "table",errors.MUST_USE_SELF.err)
+  if name == "" then name = nil end
+
+  local opts = 0
+  return opendb(self,name,opts)
+end
+
+--- Opens a table if it exists, or create it if it doesn't
+env.open_or_new_db = function(self, name)
+ --test if the database exists?
+ --if not exist then create?
+  assert(type(self) == "table", errors.MUST_USE_SELF.err)
+  if name == "" then name = nil end
+  if not name then return nil, errors.NO_BLANK_OR_NIL.err end
+
+  local opts
+  opts = MDB.CREATE
+  return opendb(self,name,opts)
+end
+
 ---List the databases contained in the lmdb environment
 env.list_dbs = function(self)
 
   local tx = self.lmdb_env:txn_begin(nil, 0)
-  local dh = assert(tx:dbi_open("", MDB.RDONLY))
+  local dh = assert(tx:dbi_open(nil, 0))
   local cursor = assert(tx:cursor_open(dh))
   local retval = {}
   local count = 0
@@ -142,7 +166,7 @@ end
 -- @param datadir Base directory that contains the database files
 persist.open = function(datadir)
   local cd = lfs.currentdir()
-  assert(lfs.chdir(datadir))
+  assert(lfs.chdir(datadir), errors.DIR_DOES_NOT_EXIST.err)
   lfs.chdir(cd)
 
   local mt = {__index = env }
@@ -154,8 +178,27 @@ persist.open = function(datadir)
   new_env.lmdb_env:set_mapsize(10485760)
   new_env.lmdb_env:set_maxdbs(10000)
   new_env.lmdb_env:open(datadir, 0, 420)
-  new_env.index = new_env:open_database("__databases")
+  new_env.index = new_env:open_or_new_db("__databases")
   return new_env
+
+end
+
+--- Returns a new lmdb environment. Throws an error if datadir directory
+--	already exists.
+-- @param datadir A base directory to find the lmdb files.
+persist.new = function(datadir)
+  local cd = lfs.currentdir()
+  local exists = lfs.chdir(datadir)
+  lfs.chdir(cd)
+
+  if exists then
+   --should we be using error() here? I say yes because
+   --this needs to be catistrophic, not catchable (except through pcall)
+    error("Directory:" .. datadir .. "\n" .. errors.DIR_ALREADY_EXISTS.err)
+  end
+  if not exists then
+    assert(lfs.mkdir(datadir))
+  end
 
 end
 
@@ -169,21 +212,6 @@ persist.open_or_new = function(datadir)
     return persist.open(datadir)
   else
     return persist.new(datadir)
-  end
-end
-
---- Returns a new lmdb environment. Throws an error if it already exists.
--- @param datadir A base directory to find the lmdb files.
-persist.new = function(datadir)
-  local cd = lfs.currentdir()
-  local exists = lfs.chdir(datadir)
-  lfs.chdir(cd)
-
-  if exists then
-    error('Data directory alread exists.  Directory:'..datadir..' \n Use open_or_new if you expect to be trying this again.')
-  end
-  if not exists then
-    assert(lfs.mkdir(datadir))
   end
 
 --[[need to create the __databases and __indexes tables
@@ -210,7 +238,6 @@ __relationships = {}
   tx:commit()
   lmdbenv:close()
   return persist.open(datadir)
-
 end
 
 persist.delete = function(datadir)
