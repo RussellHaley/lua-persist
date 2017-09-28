@@ -342,7 +342,7 @@ end
 -- @param db Will assert if null. Should have check for actual database object.
 -- @param t Base table for tracking. If t is null a blank table is used.
 -- @return A proxy table for the original data that tracks all changes to the data.
-local tracker = function (db,t)
+tracker = function (db,t)
 
   assert(db,"Database is null");
 

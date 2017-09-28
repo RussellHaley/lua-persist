@@ -1,7 +1,12 @@
 #!/usr/local/bin/lua
 --- @file db-test.lua
-
-require("mobdebug").start()
+--[[Script purpose
+This script opens two databases
+data-numbers - table idx use numbers
+table - cities, people, addresses
+data-words - table idx uses non-numbers (guids, other)
+--]]
+--require("mobdebug").start()
 
 local persist = require("persist")
 local m = require("moses")
@@ -9,28 +14,33 @@ local serpent = require("serpent")
 
 --open a new or existing database
 local words, err, errno = persist.open_or_new("data-words")
--- Test if the databse is valid
 if not words then print("oops".. err,errno) os.exit(1) end
 
---Try to open something that doesn't exist... 
---local data2, err = pcall(persist.open("data2"))
-
---Try to re-create something that exists...
---local words, err, errno = pcall(persist.new("data-words"))
-
-local numbers, err, errno = persist.new("data-numbers")
-if not numbers then print("uh,ho") print(err,errno) os.exit(1) end
-
 local t, count = words:list_dbs()
+print("Words db init table count "..count)
 
-print("count init "..count)
+local numbers, err, errno = persist.open_or_new("data-numbers")
+if not numbers then print("uh,ho") print(err,errno) os.exit(1) end
 
 local boys = words:open_or_new_db("boysnames")
 
 boys:add_item("Russell",true)
 boys:add_item("Adam",true)
+boys:add_item("Christopher",true)
+boys:add_item("Stephen",true)
+boys:add_item("Richard",true)
+boys:add_item("William",true)
+boys:add_item("Joeseph",true)
 
-local t, count = words:list_dbs()
+local count = boys:count()
+ print ("boys names: " .. count)
+
+local recs = boys:get_all()
+
+for k,v in pairs(recs) do
+print(k, v)
+end
+
 
 local cities = words:open_or_new_db("cities")
 
@@ -43,14 +53,14 @@ local t, count = words:list_dbs()
 print("count two "..count)
 
 local policies = numbers:open_or_new_db("insurance-policies")
-policies:add_item(1,"No good deed will go unpunished")
+policies:add_item(1,"Don't forget to eat your meat.")
 policies:add_item(2,"No good deed will go unpunished")
-policies:add_item(3,"No good deed will go unpunished")
-policies:add_item(4,"No good deed will go unpunished")
+policies:add_item(3,"How can you have any pudding if you don't eat your meat?")
+policies:add_item(4,"Oh, my. Oh my my. Chitty Chitty Bang Bang! Horray!")
 
 local t2,c2 = numbers:list_dbs()
 
-print("data2 count "..c2)
+print("Numbers Database Count "..c2)
 
 print(serpent.block(t2))
 
