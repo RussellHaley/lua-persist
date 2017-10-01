@@ -48,6 +48,12 @@ cities:add_item("Victoria","{description='some random data in here'}")
 cities:add_item("Belingham","{description='some random data in here'}")
 cities:add_item("Kelowna","{description='some random data in here'}")
 
+local recs = boys:get_all()
+
+for k,v in pairs(recs) do
+print(k, v)
+end
+
 local t, count = words:list_dbs()
 
 print("count two "..count)

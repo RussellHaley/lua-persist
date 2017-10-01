@@ -6,6 +6,7 @@
 
 ---table serializer
 local serpent = require("serpent")
+local errors = require("errors")
 
 local lightningmdb = _VERSION >= "Lua 5.2" and require("lightningmdb")
 
@@ -31,7 +32,9 @@ proto.open_tx = function(self,name,readonly)
   local opts
 
   if readonly then
-    opts = MDB.RDONLY + MDB.DUPSORT
+  --  opts = MDB.RDONLY + MDB.DUPSORT
+  print('readonly disabled')
+  opts = 0
   else
     opts = 0
   end
@@ -65,7 +68,7 @@ proto.check_tx = function(self,tx)
   end
 end
 
---- Checks the entry for valid values and serialises tables.
+--- *KEYS CAN TOTALLY BE TABLES. THIS NEEDS FIXING
 -- @param key The item key that is checked and serialized if necessary
 -- @param value The table item value to check and serialize if necessary
 -- @param throw_on_key Throws an error if the key is a table. ?
@@ -82,6 +85,54 @@ local function clean_items(key,value,throw_on_key)
     if value then value = 1 else value = 0 end
   end
   return key,value
+end
+
+--- Use this function to only insert the data if the key is already present and duplicates are not allowed.
+proto.add_item = function (self,key,value,tx)
+  local dh, cf
+  tx, dh, cf = self:check_tx(tx)
+
+  -- If the transaction fails, dh and cf will specify the error message and error number
+  if not tx then return dh,cf end
+
+  key, value = clean_items(key,value, true)
+  local ok, err, errno = tx:put(dh, key, value, MDB.NOOVERWRITE)
+  if cf then
+    if not ok then
+      tx:abort()
+      return nil, err, errno
+    end
+    tx:commit()
+  end
+  return key
+end
+
+--- Adds all entries ina table to the database
+-- @param items A table containing the items to be committed
+-- @return On success returns true. On error returns nil, err, errno
+proto.add_items= function (self,items)
+  local tx, dh = self:open_tx(self.name)
+  local ok, err, errno
+  local cursor
+  cursor, err, errno= tx:cursor_open(dh)
+  if not cursor then
+    tx:abort()
+    return nil, err, errno
+  end
+  local tmp = 0
+  for k,v in pairs(items) do
+    k,v = clean_items(k,v,true)
+    ok, err, errno = cursor:put(k,v,0)
+    if not ok then
+      cursor:close()
+      tx:abort()
+
+      return nil, err, errno
+    end
+  end
+  cursor:close()
+  tx:commit()
+  return true
 end
 
 --- Debug function to print the raw entries
@@ -207,16 +258,6 @@ proto.search_entries = function (self,func,...)
   return tracker(self,retval)
 end
 
---- Gets a single item from the database
--- @param key The item key for the database to retrieve
-proto.get_item = function (self,key)
-  local tx, dh = self:open_tx(self.name, true)
-  local ok,res,errno = tx:get(dh,key, _)
-  tx:commit()
-  return ok,res,errno
-end
-
-
 --- Searches the database for all the keys in tbl and returns a table of records.
 -- @param self The lp database object
 -- @param tbl Table containing the keys for searching. The value is ignored.
@@ -225,43 +266,22 @@ proto.get_items = function (self,tbl)
   local tx, dh = self:open_tx(self.name, true)
   local cursor, error, errorno = tx:cursor_open(dh)
   local k = 0
-  for i,v in tbl do
-    local key,val = cursor:get(i, MDB.FIRST)
-    while key do
-      retval[key] = val
-      local key,val = cursor:get(i, MDB.NEXT)
-    end
-  end
-  cursor:close()
-  tx:abort()
-end
-
---- Adds all entries ina table to the database
--- @param items A table containing the items to be committed
--- @return On success returns true. On error returns nil, err, errno
-proto.add_items= function (self,items)
-  local tx, dh = self:open_tx(self.name)
-  local ok, err, errno
-  local cursor
-  cursor, err, errno= tx:cursor_open(dh)
-  if not cursor then
-    tx:abort()
-    return nil, err, errno
-  end
-  local tmp = 0
-  for k,v in pairs(items) do
-    k,v = clean_items(k,v,true)
-    ok, err, errno = cursor:put(k,v,0)
-    if not ok then
-      cursor:close()
-      tx:abort()
-
-      return nil, err, errno
-    end
+  for _,v in pairs(tbl) do
+    local key,val = cursor:get(v, MDB.SET_KEY)
+    retval[key] = val
   end
   cursor:close()
   tx:commit()
-  return true
+  return retval
+end
+
+--- Gets a single item from the database
+-- @param key The item key for the database to retrieve
+proto.get_value = function (self,key)
+  local tx, dh = self:open_tx(self.name, true)
+  local ok,res,errno = tx:get(dh,key, _)
+  tx:commit()
+  return ok,res,errno
 end
 
 --- Checks if the database exists. This doesn't work!
@@ -281,25 +301,7 @@ end
 
 
 
---- Use this function to only insert the data if the key is already present and duplicates are not allowed.
-proto.add_item = function (self,key,value,tx)
-  local dh, cf
-  tx, dh, cf = self:check_tx(tx)
 
-  -- If the transaction fails, dh and cf will specify the error message and error number
-  if not tx then return dh,cf end
-
-  key, value = clean_items(key,value, true)
-  local ok, err, errno = tx:put(dh, key, value, MDB.NOOVERWRITE)
-  if cf then
-    if not ok then
-      tx:abort()
-      return nil, err, errno
-    end
-    tx:commit()
-  end
-  return key
-end
 
 --- Inserts or updates an item in the database
 -- @param key The key item to add to the database
@@ -314,6 +316,57 @@ proto.upsert_item = function (self,key,value)
   end
   tx:commit()
   return key
+end
+
+--- Delete an item from the database
+proto.delete_item = function (self,key,tx)
+  local dh, cf
+  tx, dh, cf = self:check_tx(tx)
+
+  -- If the transaction fails, dh and cf will specify the error message and error number
+  if not tx then return dh,cf end
+
+  key, value = clean_items(key,value, true)
+  print(key)
+  local ok, err, errno = tx:del(dh, key, nil)
+  if cf then
+    if not ok then
+      tx:abort()
+      return nil, err, errno
+    end
+    tx:commit()
+  end
+  return key
+end
+
+--- Delete all entries in a table to the database
+-- @param items A table containing the objects to remove, stored as the VALUES of the table.
+-- *Table keys are ignored!*
+-- @return On success returns true. On error returns nil, err, errno
+proto.delete_items= function (self,items)
+  local tx, dh = self:open_tx(self.name)
+  local ok, err, errno
+  local cursor
+  cursor, err, errno= tx:cursor_open(dh)
+  if not cursor then
+    tx:abort()
+    return nil, err, errno
+  end
+  local tmp = 0
+  for k,v in pairs(items) do
+	local ok,err,errno = cursor:get(v, MDB.SET)
+	if ok then 
+		ok, err, errno = cursor:del(0)
+	end
+    if not ok then
+      cursor:close()
+      tx:abort()
+      return nil, err, errno
+    end
+  end
+  cursor:close()
+  tx:commit()
+  return true
 end
 
 --- Returns database statistics including the number of entries
@@ -334,8 +387,10 @@ proto.close = function(self)
   --De-allocate self from env.databases?
   --update any indexes?
   --any cleanup?
+  --**Should we check that all the trackers are committed?
+  -- That would be expensive but ideal.
+  -- we should also check for open transactions
 end
-
 
 --- Turns a regular table into a "Tracker Table".
 -- The function adds the database and a change tracking meta table to the base table specified in t.
@@ -428,11 +483,34 @@ tracker = function (db,t)
       if meta.database then
         meta.database:commit(proxy)
       end
+    end,
+
+    __status = function()
+		local meta = getmetatable(proxy)
+		local st={add=0,update=0,delete=0,errors=0}
+		if meta.changes then
+			for k,v in pairs(meta.	changes) do
+				if v == "add" then
+					st.add = st.add + 1
+				elseif v == "update" then
+					st.update = st.update + 1
+				elseif v == "delete" then
+					st.delete = st.delete + 1
+				else
+					st.errors = st.errors + 1
+				end
+			end
+		else
+			error('no change in meta!')
+		end
+		return st
     end
-  }
+}
 
   proxy.commit = mt.__commit
 
+  proxy.status = mt.__status
+  
   setmetatable(proxy, mt)
 
   return proxy
@@ -463,6 +541,8 @@ database.new = function(self, lmdb_env, name)
 
   return new_db
 end
+
+
 
 
 database.tracker = tracker
