@@ -1,6 +1,6 @@
 # lua-persist
 
-lua-persist is a persistence and indexing library for lua tables. It allows you to perform lighting fast searches on keys and create indexes using regular lua functions.
+Lua-persist is a persistence and indexing library for lua tables. It allows you to perform lighting fast searches on keys and create indexes using regular lua functions. Lua-persist tracks changes to data returned from the environment allowing you to insert, update and delete data and simply type mydtable:commit().
 
 ## Requirements:
 
