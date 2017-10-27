@@ -80,6 +80,14 @@
  NOTE: Does not check the transaction yet.</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#proto.add_item">proto.add_item (self, key, value, tx)</a></td>
+	<td class="summary">Use this function to only insert the data if the key is already present and duplicates are not allowed.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#proto.add_items">proto.add_items (items)</a></td>
+	<td class="summary">Adds all entries ina table to the database</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#proto.print_entries">proto.print_entries (self)</a></td>
 	<td class="summary">Debug function to print the raw entries</td>
 	</tr>
@@ -103,28 +111,28 @@
  if it returns true, adds it to the return set.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#proto.get_item">proto.get_item (key)</a></td>
-	<td class="summary">Gets a single item from the database</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#proto.get_items">proto.get_items (self, tbl)</a></td>
 	<td class="summary">Searches the database for all the keys in tbl and returns a table of records.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#proto.add_items">proto.add_items (items)</a></td>
-	<td class="summary">Adds all entries ina table to the database</td>
+	<td class="name" nowrap><a href="#proto.get_value">proto.get_value (key)</a></td>
+	<td class="summary">Gets a single item from the database</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#proto.item_exists">proto.item_exists (key)</a></td>
 	<td class="summary">Checks if the database exists.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#proto.add_item">proto.add_item (self, key, value, tx)</a></td>
-	<td class="summary">Use this function to only insert the data if the key is already present and duplicates are not allowed.</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#proto.upsert_item">proto.upsert_item (key, value)</a></td>
 	<td class="summary">Inserts or updates an item in the database</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#proto.delete_item">proto.delete_item (self, key, tx)</a></td>
+	<td class="summary">Delete an item from the database</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#proto.delete_items">proto.delete_items (items)</a></td>
+	<td class="summary">Delete all entries in a table to the database</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#proto.stats">proto.stats (self)</a></td>
@@ -133,6 +141,10 @@
 	<tr>
 	<td class="name" nowrap><a href="#proto.count">proto.count (self)</a></td>
 	<td class="summary">Returns a count of entries for a database</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#tracker">tracker (db, t)</a></td>
+	<td class="summary">Turns a regular table into a "Tracker Table".</td>
 	</tr>
 </table>
 <h2><a href="#Tables">Tables</a></h2>
@@ -153,11 +165,7 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#clean_items">clean_items (key, value, throw_on_key)</a></td>
-	<td class="summary">Checks the entry for valid values and serialises tables.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#tracker">tracker (db, t)</a></td>
-	<td class="summary">Turns a regular table into a "Tracker Table".</td>
+	<td class="summary">*KEYS CAN TOTALLY BE TABLES.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#readOnly">readOnly (t)</a></td>
@@ -221,6 +229,60 @@
         dh database handle or error message</li>
         <li>
         commit_flag or error number</li>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "proto.add_item"></a>
+    <strong>proto.add_item (self, key, value, tx)</strong>
+    </dt>
+    <dd>
+    Use this function to only insert the data if the key is already present and duplicates are not allowed.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">self</span>
+
+        </li>
+        <li><span class="parameter">key</span>
+
+        </li>
+        <li><span class="parameter">value</span>
+
+        </li>
+        <li><span class="parameter">tx</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "proto.add_items"></a>
+    <strong>proto.add_items (items)</strong>
+    </dt>
+    <dd>
+    Adds all entries ina table to the database
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">items</span>
+         A table containing the items to be committed
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        On success returns true. On error returns nil, err, errno
     </ol>
 
 
@@ -346,26 +408,6 @@
 
 </dd>
     <dt>
-    <a name = "proto.get_item"></a>
-    <strong>proto.get_item (key)</strong>
-    </dt>
-    <dd>
-    Gets a single item from the database
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">key</span>
-         The item key for the database to retrieve
-        </li>
-    </ul>
-
-
-
-
-
-</dd>
-    <dt>
     <a name = "proto.get_items"></a>
     <strong>proto.get_items (self, tbl)</strong>
     </dt>
@@ -389,25 +431,20 @@
 
 </dd>
     <dt>
-    <a name = "proto.add_items"></a>
-    <strong>proto.add_items (items)</strong>
+    <a name = "proto.get_value"></a>
+    <strong>proto.get_value (key)</strong>
     </dt>
     <dd>
-    Adds all entries ina table to the database
+    Gets a single item from the database
 
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">items</span>
-         A table containing the items to be committed
+        <li><span class="parameter">key</span>
+         The item key for the database to retrieve
         </li>
     </ul>
 
-    <h3>Returns:</h3>
-    <ol>
-
-        On success returns true. On error returns nil, err, errno
-    </ol>
 
 
 
@@ -439,35 +476,6 @@
 
 </dd>
     <dt>
-    <a name = "proto.add_item"></a>
-    <strong>proto.add_item (self, key, value, tx)</strong>
-    </dt>
-    <dd>
-    Use this function to only insert the data if the key is already present and duplicates are not allowed.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">self</span>
-
-        </li>
-        <li><span class="parameter">key</span>
-
-        </li>
-        <li><span class="parameter">value</span>
-
-        </li>
-        <li><span class="parameter">tx</span>
-
-        </li>
-    </ul>
-
-
-
-
-
-</dd>
-    <dt>
     <a name = "proto.upsert_item"></a>
     <strong>proto.upsert_item (key, value)</strong>
     </dt>
@@ -485,6 +493,58 @@
         </li>
     </ul>
 
+
+
+
+
+</dd>
+    <dt>
+    <a name = "proto.delete_item"></a>
+    <strong>proto.delete_item (self, key, tx)</strong>
+    </dt>
+    <dd>
+    Delete an item from the database
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">self</span>
+
+        </li>
+        <li><span class="parameter">key</span>
+
+        </li>
+        <li><span class="parameter">tx</span>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "proto.delete_items"></a>
+    <strong>proto.delete_items (items)</strong>
+    </dt>
+    <dd>
+    Delete all entries in a table to the database
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">items</span>
+         A table containing the objects to remove, stored as the VALUES of the table.
+ *Table keys are ignored!*
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        On success returns true. On error returns nil, err, errno
+    </ol>
 
 
 
@@ -525,6 +585,35 @@
         </li>
     </ul>
 
+
+
+
+
+</dd>
+    <dt>
+    <a name = "tracker"></a>
+    <strong>tracker (db, t)</strong>
+    </dt>
+    <dd>
+    Turns a regular table into a "Tracker Table".
+ The function adds the database and a change tracking meta table to the base table specified in t.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">db</span>
+         Will assert if null. Should have check for actual database object.
+        </li>
+        <li><span class="parameter">t</span>
+         Base table for tracking. If t is null a blank table is used.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        A proxy table for the original data that tracks all changes to the data.
+    </ol>
 
 
 
@@ -584,7 +673,7 @@
     <strong>clean_items (key, value, throw_on_key)</strong>
     </dt>
     <dd>
-    Checks the entry for valid values and serialises tables.
+    *KEYS CAN TOTALLY BE TABLES.  THIS NEEDS FIXING
 
 
     <h3>Parameters:</h3>
@@ -606,35 +695,6 @@
         key cleaned key</li>
         <li>
         value cleaned value</li>
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "tracker"></a>
-    <strong>tracker (db, t)</strong>
-    </dt>
-    <dd>
-    Turns a regular table into a "Tracker Table".
- The function adds the database and a change tracking meta table to the base table specified in t.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">db</span>
-         Will assert if null. Should have check for actual database object.
-        </li>
-        <li><span class="parameter">t</span>
-         Base table for tracking. If t is null a blank table is used.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        A proxy table for the original data that tracks all changes to the data.
     </ol>
 
 
@@ -668,7 +728,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2017-09-05 22:03:09 </i>
+<i style="float:right;">Last updated 2017-10-27 06:04:06 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

@@ -1,3 +1,13 @@
+--[[
+\author Tobias Kieslich
+\license MIT
+\date   2017
+\brief Creates a table full of random goodness.
+\remarks
+local Rtvg = require("random-tables")
+x=Rtvg()
+t=x:getVals(30000) 
+--]]
 local makeWord = function( )
         local wrd = {}
         for i=1,math.random(3,12) do

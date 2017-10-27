@@ -277,10 +277,14 @@ end
 
 --- Gets a single item from the database
 -- @param key The item key for the database to retrieve
-proto.get_value = function (self,key)
+proto.get_value = function (self,key,is_table)
   local tx, dh = self:open_tx(self.name, true)
   local ok,res,errno = tx:get(dh,key, _)
   tx:commit()
+  if is_table and ok then
+    local table_ok, tt = serpent.load(res)
+    if table_ok then res = tt end
+  end
   return ok,res,errno
 end
 
@@ -354,10 +358,10 @@ proto.delete_items= function (self,items)
   end
   local tmp = 0
   for k,v in pairs(items) do
-	local ok,err,errno = cursor:get(v, MDB.SET)
-	if ok then 
-		ok, err, errno = cursor:del(0)
-	end
+    local ok,err,errno = cursor:get(v, MDB.SET)
+    if ok then 
+        ok, err, errno = cursor:del(0)
+    end
     if not ok then
       cursor:close()
       tx:abort()
@@ -486,24 +490,24 @@ tracker = function (db,t)
     end,
 
     __status = function()
-		local meta = getmetatable(proxy)
-		local st={add=0,update=0,delete=0,errors=0}
-		if meta.changes then
-			for k,v in pairs(meta.	changes) do
-				if v == "add" then
-					st.add = st.add + 1
-				elseif v == "update" then
-					st.update = st.update + 1
-				elseif v == "delete" then
-					st.delete = st.delete + 1
-				else
-					st.errors = st.errors + 1
-				end
-			end
-		else
-			error('no change in meta!')
-		end
-		return st
+        local meta = getmetatable(proxy)
+        local st={add=0,update=0,delete=0,errors=0}
+        if meta.changes then
+            for k,v in pairs(meta.  changes) do
+                if v == "add" then
+                    st.add = st.add + 1
+                elseif v == "update" then
+                    st.update = st.update + 1
+                elseif v == "delete" then
+                    st.delete = st.delete + 1
+                else
+                    st.errors = st.errors + 1
+                end
+            end
+        else
+            error('no change in meta!')
+        end
+        return st
     end
 }
 
@@ -531,7 +535,8 @@ local readOnly = function (t)
   return proxy
 end
 
-
+-- Creates a new dtable. Nothing is persisted until a commit happens
+-- This only creates the structure. Nothing is persisted at this point.
 database.new = function(self, lmdb_env, name)
   local mt = {__index = proto }
   local new_db = {}

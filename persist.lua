@@ -84,7 +84,7 @@ local opendb = function(env,name,opts)
     -- to track index the databases we have in lmdb. 
     if name ~= nil then env.databases[name] = _db end
     
-    --NEED TO BITWISE AND THIS? How to test all options.
+    --NEED TO CREATE A MASK? How to test all options?
     if opt == MDB.CREATE then
       self.index:add_item(name,_db,tx)
     end
@@ -184,7 +184,7 @@ persist.open = function(datadir)
 end
 
 --- Returns a new lmdb environment. Throws an error if datadir directory
---	already exists.
+--  already exists.
 -- @param datadir A base directory to find the lmdb files.
 persist.new = function(datadir)
   local cd = lfs.currentdir()
@@ -207,13 +207,13 @@ persist.open_or_new = function(datadir)
   local cd = lfs.currentdir()
   local exists = lfs.chdir(datadir)
   lfs.chdir(cd)
+  
+--Found existing. 
+  if exists then return persist.open(datadir) end
 
-  if exists then
-    return persist.open(datadir)
-  else
-    return persist.new(datadir)
-  end
-
+-- Create a new database and open it.
+  persist.new(datadir)
+  
 --[[need to create the __databases and __indexes tables
 __database = {key="", value={duplicates="", indexes={}, relationships={}}}
 __indexes = {key="",value={__func="function(k,v,...) return v end", dirty=false,  }}
@@ -228,8 +228,9 @@ __relationships = {}
   local tx = lmdbenv:txn_begin(nil, 0)
   local opts = MDB.CREATE
 
+--change __databases to __dtables
   local dh = assert(tx:dbi_open("__databases", opts))
-  local ok, err, errno = tx:put(dh, "_", serpent.block(new_db("__databases")),  MDB.NOOVERWRITE)
+  local ok, err, errno = tx:put(dh, "_", serpent.block({duplicates=false, indexes={}, relationships={}}),  MDB.NOOVERWRITE)
   if not ok then
     tx:abort()
     lmdbenv:close()

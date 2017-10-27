@@ -1,6 +1,7 @@
 # lua-persist
 
-Lua-persist is a persistence and indexing library for lua tables. It allows you to perform lighting fast searches on keys and create indexes using regular lua functions. Lua-persist tracks changes to data returned from the environment allowing you to insert, update and delete data and simply type mydtable:commit().
+Lua-persist is a persistence and indexing library for lua tables. It allows you to perform lighting fast searches on keys and create indexes using regular lua functions.
+Lua-persist tracks changes to data returned from the environment allowing you to insert, update and delete data and simply commit() the data.
 
 ## Requirements:
 
@@ -28,11 +29,15 @@ Just type make && sudo make install
 ## Using the Library
 
 I don't have any installer yet, so you will need to use LUA_PATH to include it in your library:
-cd ~/git/lua-persist #or whereever you have it
+cd ~/git/lua-persist #or where ever you have it
 #bash
 LUA_PATH=`pwd`/\?.lua";;"
 export LUA_PATH
 
 #csh
 setenv LUA_PATH `pwd`/\?.lua";;"
+
+Basic Usage:
+
+
 
