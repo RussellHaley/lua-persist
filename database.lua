@@ -111,6 +111,7 @@ end
 -- @param items A table containing the items to be committed
 -- @return On success returns true. On error returns nil, err, errno
 proto.add_items= function (self,items)
+  if not items then return nil, errors.NIL_VALUE.err, errors.NIL_VALUE.errno end
   local tx, dh = self:open_tx(self.name)
   local ok, err, errno
   local cursor
@@ -198,6 +199,7 @@ end
 -- @param tt Tracker Table containing recordset and meta about the changes made to the data.
 -- @param tx Optional transaction. NOTE: If a transaction is specified, the tracker table is committed as a CHILD
 -- TRANSACTION that must be completed with no errors. NO OTHER actions on this transaction can occur at the same time.
+-- @remarks ! I don't check if this is a tracker table. 
 proto.commit =  function (self,tt, tx)
   local meta = getmetatable(tt)
   if meta and meta.changes then
@@ -216,7 +218,10 @@ proto.commit =  function (self,tt, tx)
       if action == "add" or action == "update" then
         ok, err, errno = cursor:put(k,v,0)
       elseif action == "delete" then
-        ok, err, errno = cursor:del(k,v,0)
+        local ok,err,errno = cursor:get(k, MDB.SET)
+        if ok then 
+            ok, err, errno = cursor:del(0)
+        end
       end
       count = count + 1
       if not ok then
@@ -249,7 +254,9 @@ proto.search_entries = function (self,func,...)
   local retval= {}
   for k, v in cursor_pairs(cursor) do
     local ok,val = func(k,v,...)
+    print("read!")
     if ok then
+		print("found")
       retval[ok] = val
     end
   end
@@ -302,10 +309,6 @@ proto.item_exists = function (self,key)
   tx:commit()
   return key
 end
-
-
-
-
 
 --- Inserts or updates an item in the database
 -- @param key The key item to add to the database
