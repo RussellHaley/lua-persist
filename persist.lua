@@ -36,11 +36,9 @@ local lfs = require("lfs")
 --Set up lmdb and a table of constants
 local LMDB_FLAGS = require("lmdb-flags")
 
---local lightningmdb = _VERSION >= "Lua 5.2" and lightningmdb_lib --or lightningmdb
 --Create a copy of the library and set the meta table? This is a pattern I inherited from
 --the lightningMDB example code. Code this be reduced to the following?
---  local lightningmdb = require("lightningmdb")
-local lightningmdb = _VERSION >= "Lua 5.2" and lightningmdb_lib
+local lightningmdb = _VERSION >= "Lua 5.1" and lightningmdb_lib
 local MDB = setmetatable({}, {
   __index = function(_, k)
     return lightningmdb["MDB_" .. k]

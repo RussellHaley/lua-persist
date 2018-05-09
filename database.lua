@@ -8,7 +8,7 @@
 local serpent = require("serpent")
 local errors = require("errors")
 
-local lightningmdb = _VERSION >= "Lua 5.2" and require("lightningmdb")
+local lightningmdb = _VERSION >= "Lua 5.1" and require("lightningmdb")
 
 local MDB = setmetatable({}, {
   __index = function(_, k)

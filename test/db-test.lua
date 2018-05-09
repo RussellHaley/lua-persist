@@ -9,7 +9,7 @@ data-words - table idx uses non-numbers (guids, other)
 --require("mobdebug").start()
 
 local persist = require("persist")
-local m = require("moses")
+--local m = require("moses")
 local serpent = require("serpent")
 
 --open a new or existing database
@@ -38,7 +38,7 @@ local count = boys:count()
 local recs = boys:get_all()
 
 for k,v in pairs(recs) do
-print(k, v)
+print(k,v)
 end
 
 
