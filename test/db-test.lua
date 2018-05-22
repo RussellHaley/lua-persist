@@ -8,6 +8,8 @@ data-words - table idx uses non-numbers (guids, other)
 --]]
 --require("mobdebug").start()
 
+package.path = package.path .. ";../src/lua/?.lua"
+
 local persist = require("persist")
 --local m = require("moses")
 local serpent = require("serpent")
