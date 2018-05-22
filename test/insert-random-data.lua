@@ -1,21 +1,28 @@
-local persist = require("persist")
-local Rtvg = require("random-tables")
+persist = require("persist")
+Rtvg = require("random-tables")
 
 x=Rtvg()
-t=x:getVals(30000)
+t=x:getVals(100000)
 
-local rand_data, err, errno = persist.open_or_new("random-data")
+rand_data, err, errno = persist.open_or_new("random-data")
 if not rand_data then print("oops".. err,errno) os.exit(1) end
 
-local rd_t1 = rand_data:open_or_new_db("t1")
+rd_t1 = rand_data:open_or_new_db("t1")
 
-rd_t1:add_items(t)
+ok, err, errno = rd_t1:add_items(t)
 
-print (rd_t1:stats())
+if not ok then 
+	print(err, errno)
 
-rd_t1:close()
-rd_t1 = nil
+end
 
-local t1 = rand_data:open_database("t1"):get_all()
+for i,v in pairs(rd_t1:stats()) do
+print(i,v)
+end
 
-print("Added "..t1:count().."records to the database")
+--~ rd_t1:close()
+--~ rd_t1 = nil
+
+count = rand_data:open_database("t1"):count()
+
+print("Added "..count.."records to the database")

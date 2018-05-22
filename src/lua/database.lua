@@ -190,6 +190,7 @@ proto.get_all = function (self)
   cursor:close()
   tx:abort()
   return tracker(self, retval)
+  --return retval
 end
 
 --- Commits values to the database from a tracker table.

@@ -6,6 +6,7 @@
 -- cursor - not implemented
 -- index - not implemented
 
+local NUM_PAGES = 256000
 local lmdb_env
 local readOnly
 
@@ -173,9 +174,13 @@ persist.open = function(datadir)
 
   new_env.datadir = datadir
   new_env.lmdb_env = lightningmdb.env_create()
-  new_env.lmdb_env:set_mapsize(10485760)
+  
   new_env.lmdb_env:set_maxdbs(10000)
-  new_env.lmdb_env:open(datadir, 0, 420)
+  local ok, err new_env.lmdb_env:set_mapsize(NUM_PAGES*4096)
+  if not ok then print(err) end
+  new_env.lmdb_env:open(datadir, lightningmdb.MDB_WRITEMAP + lightningmdb.MDB_MAPASYNC, 420)
+  
+  
   new_env.index = new_env:open_or_new_db("__databases")
   return new_env
 
@@ -220,9 +225,10 @@ __relationships = {}
   -- Insert a new __databases kvs into the new environment. We can't use the persist API because it requires access
   -- to the __databases kvs so we use the base lightningmdb API.
   local lmdbenv = lightningmdb.env_create()
-  lmdbenv:set_mapsize(10485760)
   lmdbenv:set_maxdbs(10000)
-  lmdbenv:open(datadir, 0, 420)
+  local ok, err = lmdbenv:set_mapsize(NUM_PAGES*4096)
+  if not ok then print(err) end
+  lmdbenv:open(datadir, lightningmdb.MDB_WRITEMAP, 420)
   local tx = lmdbenv:txn_begin(nil, 0)
   local opts = MDB.CREATE
 
