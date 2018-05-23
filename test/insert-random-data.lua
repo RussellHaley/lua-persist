@@ -1,8 +1,9 @@
+package.path = package.path .. ';../src/?.lua;'
 persist = require("persist")
 Rtvg = require("random-tables")
 
 x=Rtvg()
-t=x:getVals(100000)
+t=x:getVals(10000)
 
 rand_data, err, errno = persist.open_or_new("random-data")
 if not rand_data then print("oops".. err,errno) os.exit(1) end
@@ -25,4 +26,4 @@ end
 
 count = rand_data:open_database("t1"):count()
 
-print("Added "..count.."records to the database")
+print("Curren count is "..count.."records to the database")

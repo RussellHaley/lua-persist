@@ -6,6 +6,9 @@
 -- cursor - not implemented
 -- index - not implemented
 
+local PAGE_SIZE = 4096 --LMDB page size
+local OPEN_ENV = 420 --Magic number from LMDB
+local MAX_DBS = 10000
 local NUM_PAGES = 256000
 local lmdb_env
 local readOnly
@@ -28,8 +31,6 @@ local env = {
 
 local cursor = {}
 
---- LMDB Wrapper
-local lightningmdb_lib = require("lightningmdb")
 --- Filesystem
 local lfs = require("lfs")
 
@@ -37,9 +38,8 @@ local lfs = require("lfs")
 --Set up lmdb and a table of constants
 local LMDB_FLAGS = require("lmdb-flags")
 
---Create a copy of the library and set the meta table? This is a pattern I inherited from
---the lightningMDB example code. Code this be reduced to the following?
-local lightningmdb = _VERSION >= "Lua 5.1" and lightningmdb_lib
+--open the library and extract a meta_table of all the LMDB defines and masks
+local lightningmdb = _VERSION >= "Lua 5.1" and require("lightningmdb")
 local MDB = setmetatable({}, {
   __index = function(_, k)
     return lightningmdb["MDB_" .. k]
@@ -160,30 +160,37 @@ env.close = function(self)
   self.lmdb_env:close()
 end
 
+local open_env = function(datadir, opts, mapsize, maxdbs)
+  local ok, err, errno
+  assert(datadir, errors.NO_BLANK_OR_NIL.err)
+  local cd = lfs.currentdir()
+  assert(lfs.chdir(datadir), errors.DIR_DOES_NOT_EXIST.err)
+  lfs.chdir(cd)
+  
+  local lmdbenv = lightningmdb.env_create()
+  lmdbenv:set_maxdbs(maxdbs or MAX_DBS)
+  ok, err = lmdbenv:set_mapsize((mapsize or NUM_PAGES*PAGE_SIZE))
+  assert(ok, err)
+  ok, err, errno = lmdbenv:open(datadir, (opts or lightningmdb.MDB_WRITEMAP), OPEN_ENV)
+  if not ok then 
+	return ok, err, errno
+  else
+    return lmdbenv
+  end
+end
 
 --- Open an existing database. Asserts if the data directory does not exist
 -- @param datadir Base directory that contains the database files
 persist.open = function(datadir)
-  local cd = lfs.currentdir()
-  assert(lfs.chdir(datadir), errors.DIR_DOES_NOT_EXIST.err)
-  lfs.chdir(cd)
-
   local mt = {__index = env }
   local new_env = {}
   setmetatable(new_env,mt)
 
   new_env.datadir = datadir
-  new_env.lmdb_env = lightningmdb.env_create()
-  
-  new_env.lmdb_env:set_maxdbs(10000)
-  local ok, err new_env.lmdb_env:set_mapsize(NUM_PAGES*4096)
-  if not ok then print(err) end
-  new_env.lmdb_env:open(datadir, lightningmdb.MDB_WRITEMAP + lightningmdb.MDB_MAPASYNC, 420)
-  
+  new_env.lmdb_env = open_env(new_env.datadir)
   
   new_env.index = new_env:open_or_new_db("__databases")
   return new_env
-
 end
 
 --- Returns a new lmdb environment. Throws an error if datadir directory
@@ -205,30 +212,26 @@ persist.new = function(datadir)
 
 end
 
+
 --- Opens a database or creates a new one if it does not exist
+-- NOTES: need to create the __databases and __indexes tables
+-- __database = {key="", value={duplicates="", indexes={}, relationships={}}}
+-- __indexes = {key="",value={__func="function(k,v,...) return v end", dirty=false,  }}
+-- __relationships = {}
+--]]
+
 persist.open_or_new = function(datadir)
   local cd = lfs.currentdir()
   local exists = lfs.chdir(datadir)
   lfs.chdir(cd)
-  
 --Found existing. 
   if exists then return persist.open(datadir) end
-
 -- Create a new database and open it.
   persist.new(datadir)
-  
---[[need to create the __databases and __indexes tables
-__database = {key="", value={duplicates="", indexes={}, relationships={}}}
-__indexes = {key="",value={__func="function(k,v,...) return v end", dirty=false,  }}
-__relationships = {}
---]]
   -- Insert a new __databases kvs into the new environment. We can't use the persist API because it requires access
   -- to the __databases kvs so we use the base lightningmdb API.
-  local lmdbenv = lightningmdb.env_create()
-  lmdbenv:set_maxdbs(10000)
-  local ok, err = lmdbenv:set_mapsize(NUM_PAGES*4096)
-  if not ok then print(err) end
-  lmdbenv:open(datadir, lightningmdb.MDB_WRITEMAP, 420)
+  --TODO: Need to change this to allow overriding of the default settings
+  local lmdbenv = open_env(datadir)
   local tx = lmdbenv:txn_begin(nil, 0)
   local opts = MDB.CREATE
 
