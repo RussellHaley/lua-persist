@@ -1,9 +1,9 @@
-package.path = package.path .. ';../src/?.lua;'
+package.path = ';../?/init.lua;'..package.path 
 persist = require("persist")
 Rtvg = require("random-tables")
 
 x=Rtvg()
-t=x:getVals(10000)
+t=x:getVals(arg[1])
 
 rand_data, err, errno = persist.open_or_new("random-data")
 if not rand_data then print("oops".. err,errno) os.exit(1) end

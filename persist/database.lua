@@ -6,7 +6,7 @@
 
 ---table serializer
 local serpent = require("serpent")
-local errors = require("errors")
+local errors = require("persist.errors")
 
 local lightningmdb = _VERSION >= "Lua 5.1" and require("lightningmdb")
 

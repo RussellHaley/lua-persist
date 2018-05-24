@@ -6,19 +6,33 @@
 -- cursor - not implemented
 -- index - not implemented
 
-local PAGE_SIZE = 4096 --LMDB page size
+function script_path()
+   local str = debug.getinfo(2, "S").source:sub(2)
+   return str:match("(.*/)")
+end
+
 local OPEN_ENV = 420 --Magic number from LMDB
-local MAX_DBS = 10000
-local NUM_PAGES = 256000
 local lmdb_env
 local readOnly
 
 local debug_flag = true
 
 local serpent = require("serpent")
-local errors = require('errors')
+local errors = require('persist.errors')
+local proto = require("persist.database")
+local get_conf, err, errno = loadfile(script_path().."/persist.conf")
+local conf
+if get_conf then
+  conf = get_conf()
+  for i,v in pairs(conf) do print(i,v) end
+else
+  error(err, errno)
+end
+--table of constants
+local LMDB_FLAGS = require("persist.lmdb-flags")
 
-local pdb = require("database")
+--- Filesystem
+local lfs = require("lfs")
 
 ---The libraries main module
 local persist = {}
@@ -30,13 +44,6 @@ local env = {
 }
 
 local cursor = {}
-
---- Filesystem
-local lfs = require("lfs")
-
-
---Set up lmdb and a table of constants
-local LMDB_FLAGS = require("lmdb-flags")
 
 --open the library and extract a meta_table of all the LMDB defines and masks
 local lightningmdb = _VERSION >= "Lua 5.1" and require("lightningmdb")
@@ -78,7 +85,7 @@ local opendb = function(env,name,opts)
     local cursor = tx:cursor_open(dh)
     cursor:close()
     tx:commit()
-    local _db = pdb:new(env.lmdb_env, name)    
+    local _db = proto:new(env.lmdb_env, name)    
     --env.database tracks the open databases. self.index is a database
     -- to track index the databases we have in lmdb. 
     if name ~= nil then env.databases[name] = _db end
@@ -168,8 +175,8 @@ local open_env = function(datadir, opts, mapsize, maxdbs)
   lfs.chdir(cd)
   
   local lmdbenv = lightningmdb.env_create()
-  lmdbenv:set_maxdbs(maxdbs or MAX_DBS)
-  ok, err = lmdbenv:set_mapsize((mapsize or NUM_PAGES*PAGE_SIZE))
+  lmdbenv:set_maxdbs(maxdbs or conf.MAX_DBS)
+  ok, err = lmdbenv:set_mapsize((mapsize or conf.NUM_PAGES * conf.PAGE_SIZE))
   assert(ok, err)
   ok, err, errno = lmdbenv:open(datadir, (opts or lightningmdb.MDB_WRITEMAP), OPEN_ENV)
   if not ok then 
