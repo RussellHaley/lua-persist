@@ -1,7 +1,7 @@
+
 package.path = ';../?/init.lua;'..package.path 
 persist = require("persist")
 Rtvg = require("random-tables")
-
 x=Rtvg()
 t=x:getVals(arg[1])
 
