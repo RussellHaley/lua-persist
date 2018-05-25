@@ -12,24 +12,25 @@ function script_path()
 end
 
 local OPEN_ENV = 420 --Magic number from LMDB
+local PAGE_SIZE = 4096 --LMDB page size
 local lmdb_env
 local readOnly
 
 local debug_flag = true
-
+local conf = require('persist.defaults')
 local serpent = require("serpent")
 local errors = require('persist.errors')
 local proto = require("persist.database")
-local get_conf, err, errno = loadfile(script_path().."/persist.conf")
-local conf
-if get_conf then
-  conf = get_conf()
-  for i,v in pairs(conf) do print(i,v) end
-else
-  error(err, errno)
-end
+--~ local get_conf, err, errno = loadfile(script_path().."/persist.conf")
+--~ local conf
+--~ if get_conf then
+  --~ conf = get_conf()
+  --~ for i,v in pairs(conf) do print(i,v) end
+--~ else
+  --~ error(err, errno)
+--~ end
 --table of constants
-local LMDB_FLAGS = require("persist.lmdb-flags")
+--~ local LMDB_FLAGS = require("persist.lmdb-flags")
 
 --- Filesystem
 local lfs = require("lfs")
@@ -176,7 +177,7 @@ local open_env = function(datadir, opts, mapsize, maxdbs)
   
   local lmdbenv = lightningmdb.env_create()
   lmdbenv:set_maxdbs(maxdbs or conf.MAX_DBS)
-  ok, err = lmdbenv:set_mapsize((mapsize or conf.NUM_PAGES * conf.PAGE_SIZE))
+  ok, err = lmdbenv:set_mapsize((mapsize or conf.NUM_PAGES * PAGE_SIZE))
   assert(ok, err)
   ok, err, errno = lmdbenv:open(datadir, (opts or lightningmdb.MDB_WRITEMAP), OPEN_ENV)
   if not ok then 
