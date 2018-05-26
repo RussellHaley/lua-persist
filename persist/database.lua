@@ -74,7 +74,7 @@ end
 -- @param throw_on_key Throws an error if the key is a table. ?
 -- @return key cleaned key
 -- @return value cleaned value
-local function clean_items(key,value,throw_on_key)
+local function clean_item(key,value,throw_on_key)
   if type(key) == 'table' then
     if throw_on_key then error('Key cannot be of type table.') end
     key = serpent.block(key)
@@ -87,6 +87,22 @@ local function clean_items(key,value,throw_on_key)
   return key,value
 end
 
+local function load_item(item)
+  if type(item) == 'string' then
+    local is_table = item:find('--%[%[table: 0x%x+%]%]$')
+    if is_table then
+      local ok, res = serpent.load(item)
+      if ok then 
+        return res 
+      else
+        return ok, res
+      end
+    end
+  else
+    return item
+  end
+end
+
 --- Use this function to only insert the data if the key is already present and duplicates are not allowed.
 proto.add_item = function (self,key,value,tx)
   local dh, cf
@@ -95,7 +111,7 @@ proto.add_item = function (self,key,value,tx)
   -- If the transaction fails, dh and cf will specify the error message and error number
   if not tx then return dh,cf end
 
-  key, value = clean_items(key,value, true)
+  key, value = clean_item(key,value, true)
   local ok, err, errno = tx:put(dh, key, value, MDB.NOOVERWRITE)
   if cf then
     if not ok then
@@ -122,7 +138,7 @@ proto.add_items= function (self,items)
   end
   local tmp = 0
   for k,v in pairs(items) do
-    k,v = clean_items(k,v,true)
+    k,v = clean_item(k,v,true)
     ok, err, errno = cursor:put(k,v,0)
     if not ok then
       cursor:close()
@@ -215,7 +231,7 @@ proto.commit =  function (self,tt, tx)
     local count = 0
     for k,action in pairs(meta.changes) do
       local v
-      k,v = clean_items(k,tt[k],true)
+      k,v = clean_item(k,tt[k],true)
       if action == "add" or action == "update" then
         ok, err, errno = cursor:put(k,v,0)
       elseif action == "delete" then
@@ -258,7 +274,7 @@ proto.search_entries = function (self,func,...)
     print("read!")
     if ok then
 		print("found")
-      retval[ok] = val
+      retval[ok] = load_item(val)
     end
   end
   cursor:close()
@@ -276,7 +292,7 @@ proto.get_items = function (self,tbl)
   local k = 0
   for _,v in pairs(tbl) do
     local key,val = cursor:get(v, MDB.SET_KEY)
-    retval[key] = val
+    retval[key] = load_item(val)
   end
   cursor:close()
   tx:commit()
@@ -285,15 +301,11 @@ end
 
 --- Gets a single item from the database
 -- @param key The item key for the database to retrieve
-proto.get_value = function (self,key,is_table)
+proto.get_value = function (self,key)
   local tx, dh = self:open_tx(self.name, true)
-  local ok,res,errno = tx:get(dh,key, _)
+  local ok,err,errno = tx:get(dh,key, _)
   tx:commit()
-  if is_table and ok then
-    local table_ok, tt = serpent.load(res)
-    if table_ok then res = tt end
-  end
-  return ok,res,errno
+  return load_item(ok), err, errno
 end
 
 --- Checks if the database exists. This doesn't work!
@@ -301,7 +313,7 @@ end
 -- @return On success returns true. On Error returns nil, err, errno
 proto.item_exists = function (self,key)
   local tx, dh = self:open_tx(self.name)
-  clean_items(key, nil, true)
+  clean_item(key, nil, true)
   local ok, err, errno = tx:get(dh, key)
   if not ok then
     tx:abort()
@@ -316,7 +328,7 @@ end
 -- @param value The value item to add to the databse at key
 proto.upsert_item = function (self,key,value)
   local tx, dh = self:open_tx(self.name)
-  key, value = clean_items(key,value, true)
+  key, value = clean_item(key,value, true)
   local ok, err, errno = tx:put(dh, key, value, 0)
   if not ok then
     tx:abort()
@@ -334,7 +346,7 @@ proto.delete_item = function (self,key,tx)
   -- If the transaction fails, dh and cf will specify the error message and error number
   if not tx then return dh,cf end
 
-  key, value = clean_items(key,value, true)
+  key, value = clean_item(key,value, true)
   print(key)
   local ok, err, errno = tx:del(dh, key, nil)
   if cf then
