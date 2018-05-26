@@ -1,5 +1,5 @@
 package = "lua-persist"
-version = "dev-1"
+version = "0.1.1-1"
 source = {
    url = "git+https://github.com/russellhaley/lua-persist"
 }
@@ -13,7 +13,8 @@ dependencies = {
    "lua >= 5.3",
    "serpent >= 0.28",
    "lightningmdb >= 0.9.19",
-   "luafilesystem >= 1.7.0"
+   "luafilesystem >= 1.7.0",
+   "chronos >= 0.2-2"
 }
 
 build = {
