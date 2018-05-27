@@ -1,4 +1,5 @@
-#!/usr/local/bin/lua
+package.path = '../?/init.lua;../?.lua;' .. package.path
+--#!/usr/local/bin/lua
 --- @file db-test.lua
 --[[Script purpose
 This script opens two databases
@@ -31,6 +32,9 @@ local count = boys:count()
 print ("boys names: " .. count)
 local recs = boys:get_all()
 
+for i,v in pairs(recs) do
+  print(type(i), type(v))
+end
 print(serpent.block(recs))
 
 --Open a second 'database' in the same files. 

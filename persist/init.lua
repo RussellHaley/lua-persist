@@ -20,7 +20,7 @@ local debug_flag = true
 local conf = require('persist.defaults')
 local serpent = require("serpent")
 local errors = require('persist.errors')
-local proto = require("persist.database")
+local proto = require("persist.ptable")
 --~ local get_conf, err, errno = loadfile(script_path().."/persist.conf")
 --~ local conf
 --~ if get_conf then
@@ -41,7 +41,7 @@ local persist = {}
 --lmdb environment table
 local env = {
   --- a table of all the dbs opened for this env.
-  databases={}
+  ptables={}
 }
 
 local cursor = {}
@@ -74,9 +74,9 @@ end
 
 local opendb = function(env,name,opts)
   if env.lmdb_env then
-    if env.databases[name] then
+    if env.ptables[name] then
     --AARGH! CHECK THE STATE FIRST!
-      return env.databases[name]
+      return env.ptables[name]
     end
     
     local tx = env.lmdb_env:txn_begin(nil, 0)
@@ -87,9 +87,9 @@ local opendb = function(env,name,opts)
     cursor:close()
     tx:commit()
     local _db = proto:new(env.lmdb_env, name)    
-    --env.database tracks the open databases. self.index is a database
-    -- to track index the databases we have in lmdb. 
-    if name ~= nil then env.databases[name] = _db end
+    --env.database tracks the open ptables. self.index is a database
+    -- to track index the ptables we have in lmdb. 
+    if name ~= nil then env.ptables[name] = _db end
     
     --NEED TO CREATE A MASK? How to test all options?
     if opt == MDB.CREATE then
@@ -139,7 +139,7 @@ env.open_or_new_db = function(self, name)
   return opendb(self,name,opts)
 end
 
----List the databases contained in the lmdb environment
+---List the ptables contained in the lmdb environment
 env.list_dbs = function(self)
 
   local tx = self.lmdb_env:txn_begin(nil, 0)
@@ -197,7 +197,7 @@ persist.open = function(datadir)
   new_env.datadir = datadir
   new_env.lmdb_env = open_env(new_env.datadir)
   
-  new_env.index = new_env:open_or_new_db("__databases")
+  new_env.index = new_env:open_or_new_db("__ptables")
   return new_env
 end
 
@@ -222,7 +222,7 @@ end
 
 
 --- Opens a database or creates a new one if it does not exist
--- NOTES: need to create the __databases and __indexes tables
+-- NOTES: need to create the __ptables and __indexes tables
 -- __database = {key="", value={duplicates="", indexes={}, relationships={}}}
 -- __indexes = {key="",value={__func="function(k,v,...) return v end", dirty=false,  }}
 -- __relationships = {}
@@ -236,15 +236,15 @@ persist.open_or_new = function(datadir)
   if exists then return persist.open(datadir) end
 -- Create a new database and open it.
   persist.new(datadir)
-  -- Insert a new __databases kvs into the new environment. We can't use the persist API because it requires access
-  -- to the __databases kvs so we use the base lightningmdb API.
+  -- Insert a new __ptables kvs into the new environment. We can't use the persist API because it requires access
+  -- to the __ptables kvs so we use the base lightningmdb API.
   --TODO: Need to change this to allow overriding of the default settings
   local lmdbenv = open_env(datadir)
   local tx = lmdbenv:txn_begin(nil, 0)
   local opts = MDB.CREATE
 
---change __databases to __dtables
-  local dh = assert(tx:dbi_open("__databases", opts))
+--change __ptables to __dtables
+  local dh = assert(tx:dbi_open("__ptables", opts))
   local ok, err, errno = tx:put(dh, "_", serpent.block({duplicates=false, indexes={}, relationships={}}),  MDB.NOOVERWRITE)
   if not ok then
     tx:abort()

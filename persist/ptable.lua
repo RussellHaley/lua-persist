@@ -6,6 +6,7 @@
 
 ---table serializer
 local serpent = require("serpent")
+local helpers = require("persist.serpent_helpers")
 local errors = require("persist.errors")
 
 local lightningmdb = _VERSION >= "Lua 5.1" and require("lightningmdb")
@@ -68,40 +69,6 @@ proto.check_tx = function(self,tx)
   end
 end
 
---- *KEYS CAN TOTALLY BE TABLES. THIS NEEDS FIXING
--- @param key The item key that is checked and serialized if necessary
--- @param value The table item value to check and serialize if necessary
--- @param throw_on_key Throws an error if the key is a table. ?
--- @return key cleaned key
--- @return value cleaned value
-local function clean_item(key,value,throw_on_key)
-  if type(key) == 'table' then
-    if throw_on_key then error('Key cannot be of type table.') end
-    key = serpent.block(key)
-  end
-  if type(value) == 'table' then
-    value = serpent.block(value)
-  elseif type(value) == 'boolean' then
-    if value then value = 1 else value = 0 end
-  end
-  return key,value
-end
-
-local function load_item(item)
-  if type(item) == 'string' then
-    local is_table = item:find('--%[%[table: 0x%x+%]%]$')
-    if is_table then
-      local ok, res = serpent.load(item)
-      if ok then 
-        return res 
-      else
-        return ok, res
-      end
-    end
-  else
-    return item
-  end
-end
 
 --- Use this function to only insert the data if the key is already present and duplicates are not allowed.
 proto.add_item = function (self,key,value,tx)
@@ -111,7 +78,7 @@ proto.add_item = function (self,key,value,tx)
   -- If the transaction fails, dh and cf will specify the error message and error number
   if not tx then return dh,cf end
 
-  key, value = clean_item(key,value, true)
+  key, value = helpers.encode(key,value)
   local ok, err, errno = tx:put(dh, key, value, MDB.NOOVERWRITE)
   if cf then
     if not ok then
@@ -138,7 +105,7 @@ proto.add_items= function (self,items)
   end
   local tmp = 0
   for k,v in pairs(items) do
-    k,v = clean_item(k,v,true)
+    k,v = helpers.encode(k,v)
     ok, err, errno = cursor:put(k,v,0)
     if not ok then
       cursor:close()
@@ -177,11 +144,11 @@ proto.get_keys = function (self)
   local k = 0
 
   for k in cursor_pairs(cursor) do
-    retval[k] = true
+    retval[helpers.decode(k)] = true
   end
   cursor:close()
   tx:abort()
-  return tracker(self, retval)
+  return self, retval
 end
 
 --- This funciton is a raw get of all ENTRIES in the database
@@ -193,20 +160,20 @@ proto.get_all = function (self)
   local cursor, error, errorno = tx:cursor_open(dh)
   local k = 0
 
+--TODO: Need to properly load the items. 
+--Check each type and re
   for k, v in cursor_pairs(cursor) do
-    local ok, ret = true, true
-    if type(v) == 'table' then
-      ok, ret = serpent.load(v)
+    local ok, ret
+    k,v = helpers.decode(k,v)
+    if k then retval[k] = v 
     else
-      k = tonumber(k) or k
-      ret = v
+      assert("key was null after decoding")
     end
-    if ok then retval[k] = ret end
   end
   cursor:close()
   tx:abort()
-  return tracker(self, retval)
-  --return retval
+  --return tracker(self, retval)
+  return retval
 end
 
 --- Commits values to the database from a tracker table.
@@ -231,7 +198,7 @@ proto.commit =  function (self,tt, tx)
     local count = 0
     for k,action in pairs(meta.changes) do
       local v
-      k,v = clean_item(k,tt[k],true)
+      k,v = helpers.encode(k,tt[k])
       if action == "add" or action == "update" then
         ok, err, errno = cursor:put(k,v,0)
       elseif action == "delete" then
@@ -270,16 +237,18 @@ proto.search_entries = function (self,func,...)
   local k
   local retval= {}
   for k, v in cursor_pairs(cursor) do
+    k,v = helpers.decode(k,v)
     local ok,val = func(k,v,...)
     print("read!")
     if ok then
 		print("found")
-      retval[ok] = load_item(val)
+      retval[ok] = val
     end
   end
   cursor:close()
   tx:abort()
-  return tracker(self,retval)
+  --return tracker(self,retval)
+  return retval
 end
 
 --- Searches the database for all the keys in tbl and returns a table of records.
@@ -292,7 +261,8 @@ proto.get_items = function (self,tbl)
   local k = 0
   for _,v in pairs(tbl) do
     local key,val = cursor:get(v, MDB.SET_KEY)
-    retval[key] = load_item(val)
+    key, val = helpers.decode(key, val)
+    retval[key] = val
   end
   cursor:close()
   tx:commit()
@@ -305,7 +275,7 @@ proto.get_value = function (self,key)
   local tx, dh = self:open_tx(self.name, true)
   local ok,err,errno = tx:get(dh,key, _)
   tx:commit()
-  return load_item(ok), err, errno
+  return helpers.decode(ok), err, errno
 end
 
 --- Checks if the database exists. This doesn't work!
@@ -313,7 +283,7 @@ end
 -- @return On success returns true. On Error returns nil, err, errno
 proto.item_exists = function (self,key)
   local tx, dh = self:open_tx(self.name)
-  clean_item(key, nil, true)
+  key = helpers.encode(key, nil)
   local ok, err, errno = tx:get(dh, key)
   if not ok then
     tx:abort()
@@ -328,7 +298,9 @@ end
 -- @param value The value item to add to the databse at key
 proto.upsert_item = function (self,key,value)
   local tx, dh = self:open_tx(self.name)
-  key, value = clean_item(key,value, true)
+  print(key,value)
+  key, value = helpers.encode(key,value)
+  print(key,value)
   local ok, err, errno = tx:put(dh, key, value, 0)
   if not ok then
     tx:abort()
@@ -346,7 +318,7 @@ proto.delete_item = function (self,key,tx)
   -- If the transaction fails, dh and cf will specify the error message and error number
   if not tx then return dh,cf end
 
-  key, value = clean_item(key,value, true)
+  key, value = helpers.encode(key,value)
   print(key)
   local ok, err, errno = tx:del(dh, key, nil)
   if cf then
@@ -535,6 +507,13 @@ tracker = function (db,t)
 
   return proxy
 
+end
+
+---Return a table as tracker. 
+-- @param self An instance of a ptable (proto).
+-- @param tbl The table to be tracked.
+proto.as_tracker = function (self,tbl)
+  return tracker(self,tbl)
 end
 
 --- Creates a read only table.
