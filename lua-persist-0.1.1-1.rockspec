@@ -14,15 +14,16 @@ dependencies = {
    "serpent >= 0.28",
    "lightningmdb >= 0.9.19",
    "luafilesystem >= 1.7.0",
-   "chronos >= 0.2-2"
+   "chronos >= 0.2-3"
 }
 
 build = {
    type = "builtin",
    modules = {
-      ["persist/database"] = "persist/database.lua",
+      ["persist/ptable"] = "persist/ptable.lua",
       ["persist/errors"] = "persist/errors.lua",
       ["persist/defaults"] = "persist/defaults.lua",
+      ["persist/serpent_helpers"] = "persist/serpent_helpers.lua",
       ["persist/"] = "persist/init.lua"
    },
    copy_directories = {
